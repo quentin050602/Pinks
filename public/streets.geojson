@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "street1",
+      "properties": {
+        "name": "Example Street"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-80.1373, 26.1224],
+          [-80.1370, 26.1230],
+          [-80.1365, 26.1235]
+        ]
+      }
+    }
+  ]
+}
+
+
+
