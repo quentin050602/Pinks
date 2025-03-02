@@ -1,16 +1,17 @@
 const express = require('express');
 const { Pool } = require('pg');
-const cors = require('cors'); // CORS für externe Anfragen aktivieren
+const cors = require('cors');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔗 Verbindung zur Render-Datenbank über ENV-Variable
+// Verbindung zur PostgreSQL-Datenbank auf Render
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Wichtig für Render-Datenbank
+  ssl: { rejectUnauthorized: false }
 });
 
-// 🛠 Middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -18,12 +19,13 @@ app.use(express.static('public'));
 // 📌 Zeichnungen speichern
 app.post('/save-drawings', async (req, res) => {
   try {
+    const geoJsonData = JSON.stringify(req.body);
     await pool.query(`
       INSERT INTO drawings (id, data) 
       VALUES (1, $1) 
       ON CONFLICT (id) 
       DO UPDATE SET data = EXCLUDED.data
-    `, [JSON.stringify(req.body)]);
+    `, [geoJsonData]);
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
@@ -42,16 +44,27 @@ app.get('/get-drawings', async (req, res) => {
   }
 });
 
+// 📌 Zeichnungen löschen
+app.post('/delete-drawings', async (req, res) => {
+  try {
+    await pool.query('UPDATE drawings SET data = $1 WHERE id = 1', [JSON.stringify({ type: "FeatureCollection", features: [] })]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("❌ Fehler beim Löschen der Zeichnungen:", error);
+    res.status(500).json({ success: false });
+  }
+});
+
 // 📌 Haus speichern
 app.post('/save-house', async (req, res) => {
   const { lat, lon, interest, address, familyName } = req.body;
   try {
     await pool.query(`
-      INSERT INTO houses (lat, lon, interest, address, family_name) 
+      INSERT INTO houses (lat, lon, full_address, interest, family_name) 
       VALUES ($1, $2, $3, $4, $5) 
       ON CONFLICT (lat, lon) 
-      DO UPDATE SET interest = $3, address = $4, family_name = $5
-    `, [lat, lon, interest, address, familyName]);
+      DO UPDATE SET full_address = $3, interest = $4, family_name = $5
+    `, [lat, lon, address, interest, familyName]);
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Speichern des Hauses:", error);
@@ -71,17 +84,7 @@ app.post('/delete-house', async (req, res) => {
   }
 });
 
-// 📌 Zeichnungen löschen
-app.post('/delete-drawings', async (req, res) => {
-  try {
-    await pool.query('UPDATE drawings SET data = $1 WHERE id = 1', [JSON.stringify({ type: "FeatureCollection", features: [] })]);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("❌ Fehler beim Löschen der Zeichnungen:", error);
-    res.status(500).json({ success: false });
-  }
-});
-
-// 🌍 Starte den Server
+// Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));
+
 

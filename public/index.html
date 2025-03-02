@@ -18,26 +18,21 @@
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
   <script>
-    // 🔗 Verbinde mit Render-Backend
     const BACKEND_URL = "https://pinks.onrender.com";
 
-    // 🌍 Initialisiere Karte
     var map = L.map('map', { center: [26.1224, -80.1373], zoom: 13 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
     L.Control.geocoder({ defaultMarkGeocode: true }).addTo(map);
 
-    // 🎨 Gruppe für alle gezeichneten Objekte
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
-    // 🖊 Zeichenwerkzeuge aktivieren
     var drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
       draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false, circlemarker: false }
     });
     map.addControl(drawControl);
 
-    // 🏠 Icons für Hausmarkierungen
     var icons = {
       "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
       "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
@@ -45,126 +40,34 @@
       "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
     };
 
-    // 🏗 Zeichnungen hinzufügen
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
-
-      if (layer instanceof L.Marker) {
-        // Adresse abrufen und speichern
-        getAddress(layer.getLatLng(), function(address) {
-          var popupContent = document.createElement("div");
-          popupContent.innerHTML = `
-            <p><strong>Adresse:</strong> ${address}</p>
-            <label>Familienname:</label>
-            <input type="text" id="familyName" placeholder="Nachname eingeben" />
-            <p>Hat dieser Haushalt Interesse?</p>
-            <button id="btnJa">Ja</button>
-            <button id="btnNein">Nein</button>
-            <button id="btnVielleicht">Vielleicht</button>
-          `;
-          layer.bindPopup(popupContent).openPopup();
-
-          function saveWithFamilyName(interest) {
-            var familyName = document.getElementById("familyName").value || "Unbekannt";
-            setInterest(layer, interest, address, familyName);
-          }
-
-          popupContent.querySelector("#btnJa").addEventListener("click", function() { saveWithFamilyName("ja"); });
-          popupContent.querySelector("#btnNein").addEventListener("click", function() { saveWithFamilyName("nein"); });
-          popupContent.querySelector("#btnVielleicht").addEventListener("click", function() { saveWithFamilyName("vielleicht"); });
-        });
-
-      } else {
-        // Farbauswahl für Straßen und Flächen
-        var popupContent = document.createElement("div");
-        popupContent.innerHTML = `
-          <label>Farbe wählen:</label>
-          <select id="colorSelect">
-            <option value="blue">Blau</option>
-            <option value="red">Rot</option>
-            <option value="green">Grün</option>
-            <option value="yellow">Gelb</option>
-            <option value="purple">Lila</option>
-          </select>
-          <button id="applyColor">Übernehmen</button>
-        `;
-        layer.bindPopup(popupContent).openPopup();
-
-        popupContent.querySelector("#applyColor").addEventListener("click", function() {
-          setColor(layer, popupContent.querySelector("#colorSelect").value);
-        });
-      }
+      saveDrawings();
     });
 
-    // 📌 Interesse für ein Haus setzen & speichern
-    function setInterest(layer, interest, address, familyName) {
-      layer.setIcon(icons[interest]);
-      layer.feature = { properties: { interest, address, familyName } };
-
-      fetch(`${BACKEND_URL}/save-house`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat: layer.getLatLng().lat, lon: layer.getLatLng().lng, interest, address, familyName })
-      })
-      .then(() => saveDrawings());
-      
-      layer.closePopup();
-    }
-
-    // 🎨 Farbe für Straßen/Flächen setzen
-    function setColor(layer, selectedColor) {
-      layer.setStyle({ color: selectedColor, fillColor: selectedColor });
-      layer.feature = { properties: { color: selectedColor } };
-      layer.closePopup();
-      saveDrawings();
-    }
-
-    // 📍 Adresse aus Koordinaten abrufen
-    function getAddress(latlng, callback) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`)
-        .then(response => response.json())
-        .then(data => callback(data.display_name))
-        .catch(() => callback("Adresse nicht gefunden"));
-    }
-
-    // 💾 Zeichnungen speichern
     function saveDrawings() {
       fetch(`${BACKEND_URL}/save-drawings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(drawnItems.toGeoJSON())
-      }).catch(error => console.error("❌ Fehler beim Speichern der Zeichnungen:", error));
+      });
     }
 
-    // 🔄 Zeichnungen laden
     function loadDrawings() {
       fetch(`${BACKEND_URL}/get-drawings`)
-      .then(response => response.json())
-      .then(data => {
-        L.geoJSON(data, {
-          pointToLayer: function (feature, latlng) {
-            return L.marker(latlng, { icon: icons[feature.properties.interest || "default"] })
-              .bindPopup(`<p><strong>Familie ${feature.properties.familyName || "Unbekannt"}</strong></p>
-                          <p>${feature.properties.address || "Adresse nicht gefunden"}</p>`);
-          },
-          onEachFeature: function (feature, layer) { drawnItems.addLayer(layer); }
-        });
-      })
-      .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
+        .then(response => response.json())
+        .then(data => {
+          L.geoJSON(data, {
+            onEachFeature: function (feature, layer) {
+              drawnItems.addLayer(layer);
+            }
+          }).addTo(map);
+        })
+        .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
     }
 
-    // ❌ Zeichnungen löschen
     map.on(L.Draw.Event.DELETED, function (event) {
-      event.layers.eachLayer(function (layer) {
-        if (layer instanceof L.Marker) {
-          fetch(`${BACKEND_URL}/delete-house`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat: layer.getLatLng().lat, lon: layer.getLatLng().lng })
-          });
-        }
-      });
       fetch(`${BACKEND_URL}/delete-drawings`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       drawnItems.clearLayers();
     });
@@ -173,7 +76,6 @@
   </script>
 </body>
 </html>
-
 
 
 
