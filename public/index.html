@@ -23,14 +23,13 @@
 
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
-
+    
     var drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
       draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
     });
     map.addControl(drawControl);
 
-    // Icons für Markierungen
     var icons = {
       "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
       "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
@@ -41,13 +40,37 @@
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
-
+      
       if (layer instanceof L.Marker) {
         saveHouse(layer);
       } else {
-        saveDrawings();
+        chooseColor(layer);
       }
     });
+
+    function chooseColor(layer) {
+      var popupContent = document.createElement("div");
+      popupContent.innerHTML = `
+        <label>Farbe wählen:</label>
+        <select id="colorSelect">
+          <option value="blue">Blau</option>
+          <option value="red">Rot</option>
+          <option value="green">Grün</option>
+          <option value="yellow">Gelb</option>
+          <option value="purple">Lila</option>
+        </select>
+        <button id="applyColor">Übernehmen</button>
+      `;
+      layer.bindPopup(popupContent).openPopup();
+
+      popupContent.querySelector("#applyColor").addEventListener("click", function() {
+        var selectedColor = popupContent.querySelector("#colorSelect").value;
+        layer.setStyle({ color: selectedColor, fillColor: selectedColor });
+        layer.feature = { properties: { color: selectedColor } };
+        layer.closePopup();
+        saveDrawings();
+      });
+    }
 
     function saveDrawings() {
       fetch(`${BACKEND_URL}/save-drawings`, {
@@ -59,20 +82,28 @@
 
     function saveHouse(layer) {
       var interest = prompt("Hat dieser Haushalt Interesse? (ja/nein/vielleicht)").toLowerCase();
-      var address = "Adresse unbekannt"; // Später mit API ersetzen
       var familyName = prompt("Familienname eingeben:");
+      
+      getAddress(layer.getLatLng(), function(address) {
+        fetch(`${BACKEND_URL}/save-house`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lat: layer.getLatLng().lat,
+            lon: layer.getLatLng().lng,
+            interest,
+            address,
+            familyName
+          })
+        }).then(() => loadHouses());
+      });
+    }
 
-      fetch(`${BACKEND_URL}/save-house`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat: layer.getLatLng().lat,
-          lon: layer.getLatLng().lng,
-          interest,
-          address,
-          familyName
-        })
-      }).then(() => loadHouses());
+    function getAddress(latlng, callback) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`)
+        .then(response => response.json())
+        .then(data => callback(data.display_name))
+        .catch(() => callback("Adresse nicht gefunden"));
     }
 
     function loadDrawings() {
@@ -80,10 +111,10 @@
         .then(response => response.json())
         .then(data => {
           L.geoJSON(data, {
+            style: function(feature) {
+              return { color: feature.properties.color || "blue", fillColor: feature.properties.color || "blue" };
+            },
             onEachFeature: function (feature, layer) {
-              if (feature.properties.color) {
-                layer.setStyle({ color: feature.properties.color, fillColor: feature.properties.color });
-              }
               drawnItems.addLayer(layer);
             }
           }).addTo(map);
@@ -126,6 +157,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 

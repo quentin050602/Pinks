@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// 📌 Zeichnungen speichern
+// 📌 Zeichnungen speichern (mit Farben)
 app.post('/save-drawings', async (req, res) => {
   try {
     const geoJsonData = JSON.stringify(req.body);
@@ -72,6 +72,17 @@ app.post('/save-house', async (req, res) => {
   }
 });
 
+// 📌 Häuser abrufen
+app.get('/get-houses', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM houses');
+    res.json(result.rows);
+  } catch (error) {
+    console.error("❌ Fehler beim Abrufen der Häuser:", error);
+    res.status(500).json({ success: false });
+  }
+});
+
 // 📌 Haus löschen
 app.post('/delete-house', async (req, res) => {
   const { lat, lon } = req.body;
@@ -84,20 +95,6 @@ app.post('/delete-house', async (req, res) => {
   }
 });
 
-
-// 📌 Häuser abrufen
-app.get('/get-houses', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM houses');
-    res.json(result.rows);
-  } catch (error) {
-    console.error("❌ Fehler beim Abrufen der Häuser:", error);
-    res.status(500).json({ success: false });
-  }
-});
-
-
 // Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));
-
 
