@@ -18,12 +18,15 @@
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
   <script>
-    // 🌍 Initialisierung der Karte
+    // 🔗 Verbinde mit Render-Backend
+    const BACKEND_URL = "https://pinks.onrender.com";
+
+    // 🌍 Initialisiere Karte
     var map = L.map('map', { center: [26.1224, -80.1373], zoom: 13 });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
     L.Control.geocoder({ defaultMarkGeocode: true }).addTo(map);
 
-    // 🎨 Feature-Gruppe für Zeichnungen
+    // 🎨 Gruppe für alle gezeichneten Objekte
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
@@ -42,13 +45,13 @@
       "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
     };
 
-    // 🏗 Neue Zeichnungen hinzufügen
+    // 🏗 Zeichnungen hinzufügen
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
 
       if (layer instanceof L.Marker) {
-        // Adresse abrufen & speichern
+        // Adresse abrufen und speichern
         getAddress(layer.getLatLng(), function(address) {
           var popupContent = document.createElement("div");
           popupContent.innerHTML = `
@@ -73,7 +76,7 @@
         });
 
       } else {
-        // Straßen und Flächen farblich markieren
+        // Farbauswahl für Straßen und Flächen
         var popupContent = document.createElement("div");
         popupContent.innerHTML = `
           <label>Farbe wählen:</label>
@@ -99,17 +102,17 @@
       layer.setIcon(icons[interest]);
       layer.feature = { properties: { interest, address, familyName } };
 
-      fetch('/save-house', {
+      fetch(`${BACKEND_URL}/save-house`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat: layer.getLatLng().lat, lon: layer.getLatLng().lng, interest, address, familyName })
-      });
-
+      })
+      .then(() => saveDrawings());
+      
       layer.closePopup();
-      saveDrawings();
     }
 
-    // 🎨 Farbe für Flächen/Straßen setzen
+    // 🎨 Farbe für Straßen/Flächen setzen
     function setColor(layer, selectedColor) {
       layer.setStyle({ color: selectedColor, fillColor: selectedColor });
       layer.feature = { properties: { color: selectedColor } };
@@ -127,16 +130,18 @@
 
     // 💾 Zeichnungen speichern
     function saveDrawings() {
-      fetch('/save-drawings', {
+      fetch(`${BACKEND_URL}/save-drawings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(drawnItems.toGeoJSON())
-      });
+      }).catch(error => console.error("❌ Fehler beim Speichern der Zeichnungen:", error));
     }
 
     // 🔄 Zeichnungen laden
     function loadDrawings() {
-      fetch('/get-drawings').then(response => response.json()).then(data => {
+      fetch(`${BACKEND_URL}/get-drawings`)
+      .then(response => response.json())
+      .then(data => {
         L.geoJSON(data, {
           pointToLayer: function (feature, latlng) {
             return L.marker(latlng, { icon: icons[feature.properties.interest || "default"] })
@@ -145,17 +150,22 @@
           },
           onEachFeature: function (feature, layer) { drawnItems.addLayer(layer); }
         });
-      });
+      })
+      .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
     }
 
     // ❌ Zeichnungen löschen
     map.on(L.Draw.Event.DELETED, function (event) {
       event.layers.eachLayer(function (layer) {
         if (layer instanceof L.Marker) {
-          deleteHouse(layer.getLatLng());
+          fetch(`${BACKEND_URL}/delete-house`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: layer.getLatLng().lat, lon: layer.getLatLng().lng })
+          });
         }
       });
-      fetch('/delete-drawings', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      fetch(`${BACKEND_URL}/delete-drawings`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       drawnItems.clearLayers();
     });
 
@@ -163,6 +173,8 @@
   </script>
 </body>
 </html>
+
+
 
 
 
