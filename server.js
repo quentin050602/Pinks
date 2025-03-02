@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 // 🔗 Verbindung zur Render-Datenbank über ENV-Variable
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // Render stellt diese automatisch bereit
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false } // Wichtig für Render-Datenbank
 });
 
