@@ -84,6 +84,19 @@ app.post('/delete-house', async (req, res) => {
   }
 });
 
+
+// 📌 Häuser abrufen
+app.get('/get-houses', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM houses');
+    res.json(result.rows);
+  } catch (error) {
+    console.error("❌ Fehler beim Abrufen der Häuser:", error);
+    res.status(500).json({ success: false });
+  }
+});
+
+
 // Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));
 
