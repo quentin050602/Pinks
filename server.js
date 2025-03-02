@@ -16,16 +16,28 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// 📌 Zeichnungen speichern (mit Farben)
+// 📌 Zeichnungen speichern (inkl. Farben)
 app.post('/save-drawings', async (req, res) => {
   try {
-    const geoJsonData = JSON.stringify(req.body);
+    const geoJsonData = req.body;
+
+    // Speichere Farbe in jeder Zeichnung
+    geoJsonData.features.forEach(feature => {
+      if (!feature.properties) {
+        feature.properties = {};
+      }
+      if (!feature.properties.color) {
+        feature.properties.color = "blue"; // Standardfarbe, falls keine gewählt wurde
+      }
+    });
+
     await pool.query(`
       INSERT INTO drawings (id, data) 
       VALUES (1, $1) 
       ON CONFLICT (id) 
       DO UPDATE SET data = EXCLUDED.data
-    `, [geoJsonData]);
+    `, [JSON.stringify(geoJsonData)]);
+
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
@@ -33,18 +45,20 @@ app.post('/save-drawings', async (req, res) => {
   }
 });
 
-// 📌 Zeichnungen abrufen
+// 📌 Zeichnungen abrufen (mit Farben)
 app.get('/get-drawings', async (req, res) => {
   try {
     const result = await pool.query('SELECT data FROM drawings WHERE id = 1');
-    res.json(result.rows.length > 0 ? result.rows[0].data : { type: "FeatureCollection", features: [] });
+    const data = result.rows.length > 0 ? result.rows[0].data : { type: "FeatureCollection", features: [] };
+
+    res.json(data);
   } catch (error) {
     console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
     res.status(500).json({ success: false });
   }
 });
 
-// 📌 Zeichnungen löschen
+// 📌 Zeichnungen endgültig löschen
 app.post('/delete-drawings', async (req, res) => {
   try {
     await pool.query('UPDATE drawings SET data = $1 WHERE id = 1', [JSON.stringify({ type: "FeatureCollection", features: [] })]);

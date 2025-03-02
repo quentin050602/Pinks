@@ -23,7 +23,7 @@
 
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
-    
+
     var drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
       draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
@@ -47,6 +47,42 @@
         chooseColor(layer);
       }
     });
+
+    function saveHouse(layer) {
+      getAddress(layer.getLatLng(), function(address) {
+        var popupContent = document.createElement("div");
+        popupContent.innerHTML = `
+          <p><strong>Adresse:</strong> ${address}</p>
+          <label>Familienname:</label>
+          <input type="text" id="familyName" placeholder="Nachname eingeben" />
+          <p>Hat dieser Haushalt Interesse?</p>
+          <button onclick="setInterest(layer, 'ja', address)">Ja</button>
+          <button onclick="setInterest(layer, 'nein', address)">Nein</button>
+          <button onclick="setInterest(layer, 'vielleicht', address)">Vielleicht</button>
+        `;
+        layer.bindPopup(popupContent).openPopup();
+      });
+    }
+
+    function setInterest(layer, interest, address) {
+      var familyName = document.getElementById("familyName").value || "Unbekannt";
+      layer.setIcon(icons[interest]);
+
+      fetch(`${BACKEND_URL}/save-house`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lat: layer.getLatLng().lat,
+          lon: layer.getLatLng().lng,
+          interest,
+          address,
+          familyName
+        })
+      });
+
+      layer.closePopup();
+      saveDrawings();
+    }
 
     function chooseColor(layer) {
       var popupContent = document.createElement("div");
@@ -78,32 +114,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(drawnItems.toGeoJSON())
       });
-    }
-
-    function saveHouse(layer) {
-      var interest = prompt("Hat dieser Haushalt Interesse? (ja/nein/vielleicht)").toLowerCase();
-      var familyName = prompt("Familienname eingeben:");
-      
-      getAddress(layer.getLatLng(), function(address) {
-        fetch(`${BACKEND_URL}/save-house`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lat: layer.getLatLng().lat,
-            lon: layer.getLatLng().lng,
-            interest,
-            address,
-            familyName
-          })
-        }).then(() => loadHouses());
-      });
-    }
-
-    function getAddress(latlng, callback) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`)
-        .then(response => response.json())
-        .then(data => callback(data.display_name))
-        .catch(() => callback("Adresse nicht gefunden"));
     }
 
     function loadDrawings() {
@@ -147,7 +157,7 @@
       }).then(() => loadHouses());
     }
 
-    map.on(L.Draw.Event.DELETED, function (event) {
+    map.on(L.Draw.Event.DELETED, function () {
       fetch(`${BACKEND_URL}/delete-drawings`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       drawnItems.clearLayers();
     });
@@ -157,10 +167,6 @@
   </script>
 </body>
 </html>
-
-
-
-
 
 
 
