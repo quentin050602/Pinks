@@ -5,22 +5,35 @@
   <title>Fort Lauderdale Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <style>
     #map { height: 100vh; width: 100%; }
+    .search-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 5px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  <div class="search-container">
+    <input id="searchBox" type="text" placeholder="Adresse suchen..." />
+    <button onclick="searchAddress()">🔍</button>
+  </div>
 
   <script>
     const BACKEND_URL = "https://pinks.onrender.com";
 
-    var map = L.map('map', { center: [26.1224, -80.1373], zoom: 13 });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
-
+    var map = L.map('map').setView([26.1224, -80.1373], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
@@ -30,44 +43,41 @@
     });
     map.addControl(drawControl);
 
-    var icons = {
-      "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
-      "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
-      "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
-      "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
-    };
-
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
-      
       if (layer instanceof L.Marker) {
-        saveHouse(layer);
+        getAddress(layer.getLatLng(), function(address) {
+          showHousePopup(layer, address);
+        });
       } else {
         chooseColor(layer);
       }
     });
 
-    function saveHouse(layer) {
-      getAddress(layer.getLatLng(), function(address) {
-        var popupContent = document.createElement("div");
-        popupContent.innerHTML = `
-          <p><strong>Adresse:</strong> ${address}</p>
-          <label>Familienname:</label>
-          <input type="text" id="familyName" placeholder="Nachname eingeben" />
-          <p>Hat dieser Haushalt Interesse?</p>
-          <button onclick="setInterest(layer, 'ja', address)">Ja</button>
-          <button onclick="setInterest(layer, 'nein', address)">Nein</button>
-          <button onclick="setInterest(layer, 'vielleicht', address)">Vielleicht</button>
-        `;
-        layer.bindPopup(popupContent).openPopup();
-      });
+    function getAddress(latlng, callback) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+        .then(response => response.json())
+        .then(data => callback(data.display_name || "Unbekannte Adresse"))
+        .catch(() => callback("Adresse nicht gefunden"));
+    }
+
+    function showHousePopup(layer, address) {
+      let popupContent = document.createElement("div");
+      popupContent.innerHTML = `
+        <p><strong>Adresse:</strong> ${address}</p>
+        <label>Familienname:</label>
+        <input type="text" id="familyName" placeholder="Nachname eingeben" />
+        <p>Hat dieser Haushalt Interesse an unserer Dienstleistung?</p>
+        <button onclick="setInterest(layer, 'ja', address)">Ja</button>
+        <button onclick="setInterest(layer, 'nein', address)">Nein</button>
+        <button onclick="setInterest(layer, 'vielleicht', address)">Vielleicht</button>
+      `;
+      layer.bindPopup(popupContent).openPopup();
     }
 
     function setInterest(layer, interest, address) {
       var familyName = document.getElementById("familyName").value || "Unbekannt";
-      layer.setIcon(icons[interest]);
-
       fetch(`${BACKEND_URL}/save-house`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,7 +146,7 @@
         .then(response => response.json())
         .then(data => {
           data.forEach(house => {
-            var marker = L.marker([house.lat, house.lon], { icon: icons[house.interest || "default"] })
+            var marker = L.marker([house.lat, house.lon])
               .bindPopup(`
                 <p><strong>Familie ${house.family_name || "Unbekannt"}</strong></p>
                 <p>${house.full_address || "Adresse nicht gefunden"}</p>
@@ -157,6 +167,15 @@
       }).then(() => loadHouses());
     }
 
+    function searchAddress() {
+      let query = document.getElementById("searchBox").value;
+      L.Control.Geocoder.nominatim().geocode(query, function(results) {
+        if (results.length) {
+          map.setView(results[0].center, 16);
+        }
+      });
+    }
+
     map.on(L.Draw.Event.DELETED, function () {
       fetch(`${BACKEND_URL}/delete-drawings`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       drawnItems.clearLayers();
@@ -167,8 +186,6 @@
   </script>
 </body>
 </html>
-
-
 
 
 
