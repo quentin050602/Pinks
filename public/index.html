@@ -46,6 +46,7 @@
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
+
       if (layer instanceof L.Marker) {
         getAddress(layer.getLatLng(), function(address) {
           showHousePopup(layer, address);
@@ -63,21 +64,21 @@
     }
 
     function showHousePopup(layer, address) {
-      let popupContent = document.createElement("div");
-      popupContent.innerHTML = `
+      let popupContent = `
         <p><strong>Adresse:</strong> ${address}</p>
         <label>Familienname:</label>
         <input type="text" id="familyName" placeholder="Nachname eingeben" />
         <p>Hat dieser Haushalt Interesse an unserer Dienstleistung?</p>
-        <button onclick="setInterest(layer, 'ja', address)">Ja</button>
-        <button onclick="setInterest(layer, 'nein', address)">Nein</button>
-        <button onclick="setInterest(layer, 'vielleicht', address)">Vielleicht</button>
+        <button onclick="setInterest(layer, 'ja', '${address}')">Ja</button>
+        <button onclick="setInterest(layer, 'nein', '${address}')">Nein</button>
+        <button onclick="setInterest(layer, 'vielleicht', '${address}')">Vielleicht</button>
       `;
       layer.bindPopup(popupContent).openPopup();
     }
 
     function setInterest(layer, interest, address) {
       var familyName = document.getElementById("familyName").value || "Unbekannt";
+      
       fetch(`${BACKEND_URL}/save-house`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,15 +89,23 @@
           address,
           familyName
         })
-      });
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log("✅ Haus gespeichert");
+        } else {
+          console.error("❌ Fehler beim Speichern des Hauses");
+        }
+      })
+      .catch(error => console.error("❌ Netzwerkfehler:", error));
 
       layer.closePopup();
-      saveDrawings();
+      loadHouses();
     }
 
     function chooseColor(layer) {
-      var popupContent = document.createElement("div");
-      popupContent.innerHTML = `
+      let popupContent = `
         <label>Farbe wählen:</label>
         <select id="colorSelect">
           <option value="blue">Blau</option>
@@ -107,14 +116,14 @@
         </select>
         <button id="applyColor">Übernehmen</button>
       `;
+
       layer.bindPopup(popupContent).openPopup();
 
-      popupContent.querySelector("#applyColor").addEventListener("click", function() {
-        var selectedColor = popupContent.querySelector("#colorSelect").value;
+      document.getElementById("applyColor").addEventListener("click", function() {
+        let selectedColor = document.getElementById("colorSelect").value;
         layer.setStyle({ color: selectedColor, fillColor: selectedColor });
-        layer.feature = { properties: { color: selectedColor } };
-        layer.closePopup();
         saveDrawings();
+        layer.closePopup();
       });
     }
 
@@ -123,7 +132,16 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(drawnItems.toGeoJSON())
-      });
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          console.log("✅ Zeichnungen gespeichert");
+        } else {
+          console.error("❌ Fehler beim Speichern der Zeichnungen");
+        }
+      })
+      .catch(error => console.error("❌ Netzwerkfehler:", error));
     }
 
     function loadDrawings() {
@@ -145,6 +163,7 @@
       fetch(`${BACKEND_URL}/get-houses`)
         .then(response => response.json())
         .then(data => {
+          drawnItems.clearLayers();
           data.forEach(house => {
             var marker = L.marker([house.lat, house.lon])
               .bindPopup(`
@@ -164,7 +183,8 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lon })
-      }).then(() => loadHouses());
+      })
+      .then(() => loadHouses());
     }
 
     function searchAddress() {
@@ -186,6 +206,7 @@
   </script>
 </body>
 </html>
+
 
 
 
