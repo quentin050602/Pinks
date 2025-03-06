@@ -91,28 +91,41 @@ app.get('/get-houses', async (req, res) => {
 });
 
 // 📌 Haus löschen
+// 📌 Haus löschen mit Debugging
 app.post('/delete-house', async (req, res) => {
-  const { lat, lon } = req.body;
-  if (!lat || !lon) {
-    return res.status(400).json({ success: false, error: "Latitude und Longitude erforderlich" });
-  }
+    const { lat, lon } = req.body;
+    
+    // 🔍 Debugging: Prüfen, ob `lat` und `lon` korrekt empfangen werden
+    console.log("🔹 Eingehende Löschanfrage für:", { lat, lon });
 
-  try {
-    const result = await pool.query('DELETE FROM houses WHERE lat = $1 AND lon = $2 RETURNING *', [lat, lon]);
-
-    if (result.rowCount === 0) {
-      console.log(`⚠️ Haus nicht gefunden: ${lat}, ${lon}`);
-      return res.status(404).json({ success: false, error: "Haus nicht gefunden" });
+    if (!lat || !lon) {
+        console.error("❌ Fehler: Keine Latitude/Longitude erhalten!");
+        return res.status(400).json({ success: false, error: "Latitude und Longitude erforderlich" });
     }
 
-    console.log(`✅ Haus gelöscht: ${lat}, ${lon}`);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("❌ Fehler beim Löschen des Hauses:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+    try {
+        // 🔍 Debugging: Prüfen, ob das Haus existiert
+        const checkExistence = await pool.query('SELECT * FROM houses WHERE lat = $1 AND lon = $2', [lat, lon]);
+        if (checkExistence.rowCount === 0) {
+            console.warn(`⚠️ Kein Haus gefunden bei: lat=${lat}, lon=${lon}`);
+            return res.status(404).json({ success: false, error: "Haus nicht gefunden" });
+        }
 
+        // ✅ Haus existiert → Jetzt löschen
+        const result = await pool.query('DELETE FROM houses WHERE lat = $1 AND lon = $2 RETURNING *', [lat, lon]);
+
+        if (result.rowCount > 0) {
+            console.log(`✅ Haus erfolgreich gelöscht: lat=${lat}, lon=${lon}`);
+            res.json({ success: true });
+        } else {
+            console.error("❌ Unerwarteter Fehler: Haus wurde nicht gelöscht!");
+            res.status(500).json({ success: false, error: "Haus wurde nicht gelöscht" });
+        } // 🔥 Fehlende geschweifte Klammer hinzugefügt
+    } catch (error) {
+        console.error("❌ Fehler beim Löschen des Hauses:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+}); // 🔥 Fehlende schließende Klammer für `delete-house`
 
 // 📌 Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));

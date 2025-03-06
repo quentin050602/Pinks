@@ -198,6 +198,8 @@
       });
       
       function deleteHouse(lat, lon) {
+          console.log(`📡 Sende Löschanfrage für: lat=${lat}, lon=${lon}`);
+
           fetch(`${BACKEND_URL}/delete-house`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -206,7 +208,7 @@
           .then(response => response.json())
           .then(data => {
               if (data.success) {
-                  console.log(`✅ Haus erfolgreich gelöscht: ${lat}, ${lon}`);
+                  console.log(`✅ Haus erfolgreich gelöscht: lat=${lat}, lon=${lon}`);
 
                   // 🔥 Entferne den Marker aus `drawnItems`
                   drawnItems.eachLayer(layer => {
@@ -218,6 +220,9 @@
                           }
                       }
                   });
+
+                  // 🔄 Aktualisiere die Liste der Häuser
+                  loadHouses();
               } else {
                   console.error("❌ Fehler beim Löschen des Hauses:", data.error);
               }
