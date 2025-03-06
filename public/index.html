@@ -72,36 +72,51 @@
         .catch(() => callback("Adresse nicht gefunden"));
     }
 
-    function showHousePopup(layer, address) {
-      let popupContent = `
-        <p><strong>Adresse:</strong> ${address}</p>
-        <label>Familienname:</label>
-        <input type="text" id="familyName" placeholder="Nachname eingeben" />
-        <p>Hat dieser Haushalt Interesse?</p>
-        <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'ja')">Ja</button>
-        <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'nein')">Nein</button>
-        <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'vielleicht')">Vielleicht</button>
-      `;
-      layer.bindPopup(popupContent).openPopup();
-    }
+      function showHousePopup(layer, address) {
+          let popupContent = `
+              <p><strong>Adresse:</strong> ${address}</p>
+              <label>Familienname:</label>
+              <input type="text" id="familyName" placeholder="Nachname eingeben" />
+              <p>Hat dieser Haushalt Interesse?</p>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id || 'null'}, 'ja')">Ja</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id || 'null'}, 'nein')">Nein</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id || 'null'}, 'vielleicht')">Vielleicht</button>
+          `;
 
-    function setInterest(address, layerId, interest) {
-      var familyName = document.getElementById("familyName").value || "Unbekannt";
-      var layer = drawnItems.getLayer(layerId);
-      layer.setIcon(icons[interest]);
+          layer.bindPopup(popupContent).openPopup();
 
-      fetch(`${BACKEND_URL}/save-house`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat: layer.getLatLng().lat,
-          lon: layer.getLatLng().lng,
-          interest,
-          address,
-          familyName
-        })
-      }).then(() => loadHouses());
-    }
+          // ✅ Direkte Speicherung mit "vielleicht" als Standard
+          setInterest(address, layer._leaflet_id || 'null', 'vielleicht');
+      }
+
+
+      function setInterest(address, layerId, interest) {
+          var familyName = document.getElementById("familyName") ? document.getElementById("familyName").value : "Unbekannt";
+          var layer = drawnItems.getLayer(layerId) || searchMarker; // 🔥 Falls `layerId` nicht existiert, `searchMarker` nehmen
+
+          if (!layer) {
+              console.error("❌ Kein gültiger Marker gefunden.");
+              return;
+          }
+
+          layer.setIcon(icons[interest]); // ✅ Icon setzen
+
+          fetch(`${BACKEND_URL}/save-house`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  lat: layer.getLatLng().lat,
+                  lon: layer.getLatLng().lng,
+                  interest,
+                  address,
+                  familyName
+              })
+          }).then(() => {
+              console.log("✅ Haus gespeichert:", address);
+              loadHouses(); // 🔥 Damit die Änderungen sofort sichtbar sind.
+          }).catch(error => console.error("❌ Fehler beim Speichern:", error));
+      }
+
 
     function loadHouses() {
       fetch(`${BACKEND_URL}/get-houses`)
@@ -121,58 +136,44 @@
         });
     }
 
-      function loadDrawings() {
-        fetch(`${BACKEND_URL}/get-drawings`)
+      function saveDrawings() {
+          let geoJsonData = drawnItems.toGeoJSON(); // GeoJSON der Zeichnungen abrufen
+
+          fetch(`${BACKEND_URL}/save-drawings`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(geoJsonData) // Direkt speichern
+          })
           .then(response => response.json())
           .then(data => {
-            if (!data.features) {
-              console.error("❌ Fehler: Ungültige GeoJSON-Datenstruktur");
-              return;
-            }
-
-            L.geoJSON(data, {
-              style: feature => ({
-                color: feature.properties.color || "blue",
-                fillColor: feature.properties.color || "blue"
-              }),
-              onEachFeature: (feature, layer) => {
-                drawnItems.addLayer(layer);
+              if (data.success) {
+                  console.log("✅ Zeichnungen erfolgreich gespeichert!");
+              } else {
+                  console.error("❌ Fehler beim Speichern der Zeichnungen:", data.error);
               }
-            }).addTo(map);
-
-            console.log("✅ Zeichnungen erfolgreich geladen!");
           })
-          .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
+          .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
       }
+
 
       
       function saveDrawings() {
-        let geoJsonData = drawnItems.toGeoJSON();
+          let geoJsonData = drawnItems.toGeoJSON(); // GeoJSON der Zeichnungen abrufen
 
-        // Sicherstellen, dass Farben gespeichert werden
-        geoJsonData.features.forEach(feature => {
-          if (!feature.properties) {
-            feature.properties = {};
-          }
-          if (!feature.properties.color) {
-            feature.properties.color = "blue"; // Standardfarbe
-          }
-        });
-
-        fetch(`${BACKEND_URL}/save-drawings`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(geoJsonData)
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (!data.success) {
-            console.error("❌ Fehler beim Speichern der Zeichnungen:", data.error);
-          } else {
-            console.log("✅ Zeichnungen erfolgreich gespeichert!");
-          }
-        })
-        .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
+          fetch(`${BACKEND_URL}/save-drawings`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(geoJsonData) // Direkt speichern
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  console.log("✅ Zeichnungen erfolgreich gespeichert!");
+              } else {
+                  console.error("❌ Fehler beim Speichern der Zeichnungen:", data.error);
+              }
+          })
+          .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
       }
 
       
