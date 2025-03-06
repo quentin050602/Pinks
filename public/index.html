@@ -5,6 +5,7 @@
   <title>Fort Lauderdale Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
@@ -27,6 +28,7 @@
     <input id="searchBox" type="text" placeholder="Adresse suchen..." />
     <button onclick="searchAddress()">🔍</button>
   </div>
+
 
   <script>
     const BACKEND_URL = "https://pinks.onrender.com";
@@ -185,6 +187,33 @@
           }
         })
         .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
+      }
+
+      
+      // 📌 Adresssuche richtig implementieren
+      function searchAddress() {
+        let query = document.getElementById("searchBox").value.trim();
+        if (query === "") {
+          alert("❌ Bitte eine Adresse eingeben!");
+          return;
+        }
+
+        // 🌍 Nominatim Geocoder benutzen
+        L.Control.Geocoder.nominatim().geocode(query, function(results) {
+          if (results.length === 0) {
+            alert("❌ Adresse nicht gefunden!");
+            return;
+          }
+
+          let result = results[0]; // Erstes Suchergebnis nehmen
+          let latlng = result.center; // Koordinaten des Ergebnisses
+
+          // 🔍 Karte zum gefundenen Punkt zoomen
+          map.setView(latlng, 16);
+
+          // 📍 Marker setzen
+          let marker = L.marker(latlng).addTo(map).bindPopup(`<b>${result.name}</b>`).openPopup();
+        });
       }
 
 
