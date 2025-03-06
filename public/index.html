@@ -9,10 +9,7 @@
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <style>
-    /* Kartengröße */
     #map { height: 100vh; width: 100%; }
-
-    /* Suchleiste oben rechts */
     .search-container {
       position: absolute;
       top: 10px;
@@ -25,35 +22,27 @@
   </style>
 </head>
 <body>
-  <!-- Karte -->
   <div id="map"></div>
-
-  <!-- Suchleiste für Adressen -->
   <div class="search-container">
     <input id="searchBox" type="text" placeholder="Adresse suchen..." />
     <button onclick="searchAddress()">🔍</button>
   </div>
 
   <script>
-    // 🌍 Backend URL für API-Anfragen
     const BACKEND_URL = "https://pinks.onrender.com";
 
-    // 📌 Initialisierung der Leaflet-Karte mit Startposition
     var map = L.map('map').setView([26.1224, -80.1373], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-    // 📌 Layer für gezeichnete Objekte
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
-    // 📌 Zeichenwerkzeug aktivieren (Polygon, Linie, Marker, Rechteck)
     var drawControl = new L.Control.Draw({
       edit: { featureGroup: drawnItems },
       draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
     });
     map.addControl(drawControl);
 
-    // 📌 Icons für Hausmarker basierend auf Interesse
     var icons = {
       "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
       "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
@@ -61,22 +50,19 @@
       "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
     };
 
-    // 📌 Event-Listener für das Erstellen neuer Objekte
     map.on(L.Draw.Event.CREATED, function (event) {
       var layer = event.layer;
       drawnItems.addLayer(layer);
 
-      // Prüfen, ob es ein Haus (Marker) oder eine Zeichnung ist
       if (layer instanceof L.Marker) {
         getAddress(layer.getLatLng(), function(address) {
-          showHousePopup(layer, address);
+          showHousePopup(layer, address, layer);
         });
       } else {
         chooseColor(layer);
       }
     });
 
-    // 📌 Adresse für einen Marker abrufen
     function getAddress(latlng, callback) {
       fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
         .then(response => response.json())
@@ -84,21 +70,19 @@
         .catch(() => callback("Adresse nicht gefunden"));
     }
 
-    // 📌 Popup für Hausinformationen anzeigen
     function showHousePopup(layer, address) {
       let popupContent = `
         <p><strong>Adresse:</strong> ${address}</p>
         <label>Familienname:</label>
         <input type="text" id="familyName" placeholder="Nachname eingeben" />
-        <p>Hat dieser Haushalt Interesse an unserer Dienstleistung?</p>
-        <button onclick="setInterest('${address}', '${layer._leaflet_id}', 'ja')">Ja</button>
-        <button onclick="setInterest('${address}', '${layer._leaflet_id}', 'nein')">Nein</button>
-        <button onclick="setInterest('${address}', '${layer._leaflet_id}', 'vielleicht')">Vielleicht</button>
+        <p>Hat dieser Haushalt Interesse?</p>
+        <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'ja')">Ja</button>
+        <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'nein')">Nein</button>
+        <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'vielleicht')">Vielleicht</button>
       `;
       layer.bindPopup(popupContent).openPopup();
     }
 
-    // 📌 Interesse für ein Haus setzen und speichern
     function setInterest(address, layerId, interest) {
       var familyName = document.getElementById("familyName").value || "Unbekannt";
       var layer = drawnItems.getLayer(layerId);
@@ -117,7 +101,6 @@
       }).then(() => loadHouses());
     }
 
-    // 🔍 Adressen suchen und Karte darauf zentrieren
     function searchAddress() {
       let query = document.getElementById("searchBox").value;
       if (query.trim() === "") return alert("Bitte eine Adresse eingeben!");
@@ -132,7 +115,6 @@
       });
     }
 
-    // 📌 Häuser laden
     function loadHouses() {
       fetch(`${BACKEND_URL}/get-houses`)
         .then(response => response.json())
@@ -151,7 +133,6 @@
         });
     }
 
-    // 📌 Zeichnungen laden
     function loadDrawings() {
       fetch(`${BACKEND_URL}/get-drawings`)
         .then(response => response.json())
@@ -163,12 +144,12 @@
         });
     }
 
-    // 📌 Daten beim Laden abrufen
     loadDrawings();
     loadHouses();
   </script>
 </body>
 </html>
+
 
 
 

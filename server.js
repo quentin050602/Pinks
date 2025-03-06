@@ -21,7 +21,7 @@ app.post('/save-drawings', async (req, res) => {
   try {
     const geoJsonData = req.body;
 
-    // Speichere Farbe in jeder Zeichnung
+    // Stelle sicher, dass Farben erhalten bleiben
     geoJsonData.features.forEach(feature => {
       if (!feature.properties) {
         feature.properties = {};
@@ -41,7 +41,7 @@ app.post('/save-drawings', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -54,7 +54,7 @@ app.get('/get-drawings', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -65,13 +65,17 @@ app.post('/delete-drawings', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Löschen der Zeichnungen:", error);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // 📌 Haus speichern
 app.post('/save-house', async (req, res) => {
   const { lat, lon, interest, address, familyName } = req.body;
+  if (!lat || !lon || !interest || !address || !familyName) {
+    return res.status(400).json({ success: false, error: "Fehlende Daten für das Haus" });
+  }
+
   try {
     await pool.query(`
       INSERT INTO houses (lat, lon, full_address, interest, family_name) 
@@ -82,7 +86,7 @@ app.post('/save-house', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Speichern des Hauses:", error);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -93,22 +97,32 @@ app.get('/get-houses', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     console.error("❌ Fehler beim Abrufen der Häuser:", error);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // 📌 Haus löschen
 app.post('/delete-house', async (req, res) => {
   const { lat, lon } = req.body;
+  if (!lat || !lon) {
+    return res.status(400).json({ success: false, error: "Latitude und Longitude erforderlich" });
+  }
+
   try {
-    await pool.query('DELETE FROM houses WHERE lat = $1 AND lon = $2', [lat, lon]);
+    const result = await pool.query('DELETE FROM houses WHERE lat = $1 AND lon = $2 RETURNING *', [lat, lon]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, error: "Haus nicht gefunden" });
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Löschen des Hauses:", error);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// Server starten
+// 📌 Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));
+
 
