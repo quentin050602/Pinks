@@ -113,6 +113,7 @@ app.post('/delete-house', async (req, res) => {
   }
 });
 
+
 // 📌 Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));
 

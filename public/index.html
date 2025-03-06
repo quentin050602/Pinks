@@ -196,6 +196,35 @@
       document.getElementById("searchBox").addEventListener("change", function () {
           searchAddress();
       });
+      
+      function deleteHouse(lat, lon) {
+          fetch(`${BACKEND_URL}/delete-house`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat, lon })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  console.log(`✅ Haus erfolgreich gelöscht: ${lat}, ${lon}`);
+
+                  // 🔥 Entferne den Marker aus `drawnItems`
+                  drawnItems.eachLayer(layer => {
+                      if (layer instanceof L.Marker) {
+                          let markerLatLng = layer.getLatLng();
+                          if (markerLatLng.lat === lat && markerLatLng.lng === lon) {
+                              drawnItems.removeLayer(layer);
+                              console.log("🗑️ Marker von der Karte entfernt!");
+                          }
+                      }
+                  });
+              } else {
+                  console.error("❌ Fehler beim Löschen des Hauses:", data.error);
+              }
+          })
+          .catch(error => console.error("❌ Netzwerkfehler beim Löschen des Hauses:", error));
+      }
+
 
       loadHouses();
       loadDrawings();
