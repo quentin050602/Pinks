@@ -209,6 +209,8 @@
           fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
               .then(response => response.json())
               .then(data => {
+                  console.log("📡 API Antwort:", data);
+
                   if (data.length === 0) {
                       alert("❌ Adresse nicht gefunden!");
                       return;
@@ -219,15 +221,21 @@
                       lng: parseFloat(data[0].lon)
                   };
 
+                  // Falls bereits ein Marker existiert, entfernen
                   if (searchMarker) {
                       map.removeLayer(searchMarker);
                   }
 
+                  // Setze neuen Marker
+                  searchMarker = L.marker(latlng, { icon: icons["default"] }).addTo(map);
+
+                  // Ansicht auf neue Position setzen
                   map.setView(latlng, 16);
-                  searchMarker = L.marker(latlng)
-                      .addTo(map)
-                      .bindPopup(`<b>${data[0].display_name}</b>`)
-                      .openPopup();
+
+                  // Adresse abrufen und Eingabeformular anzeigen
+                  getAddress(latlng, function(address) {
+                      showHousePopup(searchMarker, address);
+                  });
               })
               .catch(error => console.error("❌ Fehler bei der Adresssuche:", error));
       }
