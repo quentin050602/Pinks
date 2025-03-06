@@ -17,33 +17,21 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // 📌 Zeichnungen speichern (inkl. Farben)
-app.post('/save-drawings', async (req, res) => {
+app.get('/get-drawings', async (req, res) => {
   try {
-    const geoJsonData = req.body;
+    const result = await pool.query('SELECT data FROM drawings WHERE id = 1');
+    
+    if (result.rows.length === 0 || !result.rows[0].data) {
+      return res.json({ type: "FeatureCollection", features: [] });
+    }
 
-    // Stelle sicher, dass Farben erhalten bleiben
-    geoJsonData.features.forEach(feature => {
-      if (!feature.properties) {
-        feature.properties = {};
-      }
-      if (!feature.properties.color) {
-        feature.properties.color = "blue"; // Standardfarbe, falls keine gewählt wurde
-      }
-    });
-
-    await pool.query(`
-      INSERT INTO drawings (id, data) 
-      VALUES (1, $1) 
-      ON CONFLICT (id) 
-      DO UPDATE SET data = EXCLUDED.data
-    `, [JSON.stringify(geoJsonData)]);
-
-    res.json({ success: true });
+    res.json(result.rows[0].data);
   } catch (error) {
-    console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
+    console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
 
 // 📌 Zeichnungen abrufen (mit Farben)
 app.get('/get-drawings', async (req, res) => {

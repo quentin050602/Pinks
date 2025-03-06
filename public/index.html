@@ -133,16 +133,60 @@
         });
     }
 
-    function loadDrawings() {
-      fetch(`${BACKEND_URL}/get-drawings`)
+      function loadDrawings() {
+        fetch(`${BACKEND_URL}/get-drawings`)
+          .then(response => response.json())
+          .then(data => {
+            if (!data.features) {
+              console.error("❌ Fehler: Ungültige GeoJSON-Datenstruktur");
+              return;
+            }
+
+            L.geoJSON(data, {
+              style: feature => ({
+                color: feature.properties.color || "blue",
+                fillColor: feature.properties.color || "blue"
+              }),
+              onEachFeature: (feature, layer) => {
+                drawnItems.addLayer(layer);
+              }
+            }).addTo(map);
+
+            console.log("✅ Zeichnungen erfolgreich geladen!");
+          })
+          .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
+      }
+
+      
+      function saveDrawings() {
+        let geoJsonData = drawnItems.toGeoJSON();
+
+        // Sicherstellen, dass Farben gespeichert werden
+        geoJsonData.features.forEach(feature => {
+          if (!feature.properties) {
+            feature.properties = {};
+          }
+          if (!feature.properties.color) {
+            feature.properties.color = "blue"; // Standardfarbe
+          }
+        });
+
+        fetch(`${BACKEND_URL}/save-drawings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geoJsonData)
+        })
         .then(response => response.json())
         .then(data => {
-          L.geoJSON(data, {
-            style: feature => ({ color: feature.properties.color || "blue", fillColor: feature.properties.color || "blue" }),
-            onEachFeature: (feature, layer) => drawnItems.addLayer(layer)
-          }).addTo(map);
-        });
-    }
+          if (!data.success) {
+            console.error("❌ Fehler beim Speichern der Zeichnungen:", data.error);
+          } else {
+            console.log("✅ Zeichnungen erfolgreich gespeichert!");
+          }
+        })
+        .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
+      }
+
 
     loadDrawings();
     loadHouses();
