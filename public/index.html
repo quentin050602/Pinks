@@ -42,7 +42,7 @@
     var map = L.map('map').setView([26.1224, -80.1373], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-    // 📌 Layer für gezeichnete Objekte (Polygon, Linien, Marker)
+    // 📌 Layer für gezeichnete Objekte
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
@@ -91,16 +91,17 @@
         <label>Familienname:</label>
         <input type="text" id="familyName" placeholder="Nachname eingeben" />
         <p>Hat dieser Haushalt Interesse an unserer Dienstleistung?</p>
-        <button onclick="setInterest(layer, 'ja', '${address}')">Ja</button>
-        <button onclick="setInterest(layer, 'nein', '${address}')">Nein</button>
-        <button onclick="setInterest(layer, 'vielleicht', '${address}')">Vielleicht</button>
+        <button onclick="setInterest('${address}', '${layer._leaflet_id}', 'ja')">Ja</button>
+        <button onclick="setInterest('${address}', '${layer._leaflet_id}', 'nein')">Nein</button>
+        <button onclick="setInterest('${address}', '${layer._leaflet_id}', 'vielleicht')">Vielleicht</button>
       `;
       layer.bindPopup(popupContent).openPopup();
     }
 
     // 📌 Interesse für ein Haus setzen und speichern
-    function setInterest(layer, interest, address) {
+    function setInterest(address, layerId, interest) {
       var familyName = document.getElementById("familyName").value || "Unbekannt";
+      var layer = drawnItems.getLayer(layerId);
       layer.setIcon(icons[interest]);
 
       fetch(`${BACKEND_URL}/save-house`, {
@@ -113,27 +114,14 @@
           address,
           familyName
         })
-      });
-
-      layer.closePopup();
-      loadHouses();
-    }
-
-    // 📌 Häuser aus der Datenbank löschen
-    function deleteHouse(lat, lon) {
-      fetch(`${BACKEND_URL}/delete-house`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lon })
-      })
-      .then(() => {
-        loadHouses();
-      });
+      }).then(() => loadHouses());
     }
 
     // 🔍 Adressen suchen und Karte darauf zentrieren
     function searchAddress() {
       let query = document.getElementById("searchBox").value;
+      if (query.trim() === "") return alert("Bitte eine Adresse eingeben!");
+
       L.Control.Geocoder.nominatim().geocode(query, function(results) {
         if (results.length) {
           let marker = L.marker(results[0].center).addTo(map);
@@ -143,12 +131,6 @@
         }
       });
     }
-
-    // 🟡 Zeichnungen löschen
-    map.on(L.Draw.Event.DELETED, function () {
-      fetch(`${BACKEND_URL}/delete-drawings`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-      drawnItems.clearLayers();
-    });
 
     // 📌 Häuser laden
     function loadHouses() {
@@ -187,6 +169,7 @@
   </script>
 </body>
 </html>
+
 
 
 
