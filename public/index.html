@@ -200,31 +200,38 @@
       // 🔍 **Suche mit Button oder Enter-Taste**
       let searchMarker = null;
       function searchAddress() {
-        let query = document.getElementById("searchBox").value.trim();
-        if (query === "") {
-          alert("❌ Bitte eine Adresse eingeben!");
-          return;
-        }
-
-        L.Control.Geocoder.nominatim().geocode(query, function(results) {
-          if (results.length === 0) {
-            alert("❌ Adresse nicht gefunden!");
-            return;
+          let query = document.getElementById("searchBox").value.trim();
+          if (query === "") {
+              alert("❌ Bitte eine Adresse eingeben!");
+              return;
           }
 
-          let latlng = results[0].center;
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+              .then(response => response.json())
+              .then(data => {
+                  if (data.length === 0) {
+                      alert("❌ Adresse nicht gefunden!");
+                      return;
+                  }
 
-          if (searchMarker) {
-            map.removeLayer(searchMarker);
-          }
+                  let latlng = {
+                      lat: parseFloat(data[0].lat),
+                      lng: parseFloat(data[0].lon)
+                  };
 
-          map.setView(latlng, 16);
-          searchMarker = L.marker(latlng)
-            .addTo(map)
-            .bindPopup(`<b>${results[0].name || query}</b>`)
-            .openPopup();
-        });
+                  if (searchMarker) {
+                      map.removeLayer(searchMarker);
+                  }
+
+                  map.setView(latlng, 16);
+                  searchMarker = L.marker(latlng)
+                      .addTo(map)
+                      .bindPopup(`<b>${data[0].display_name}</b>`)
+                      .openPopup();
+              })
+              .catch(error => console.error("❌ Fehler bei der Adresssuche:", error));
       }
+
 
       document.getElementById("searchBox").addEventListener("change", function () {
         searchAddress();
