@@ -103,20 +103,6 @@
       }).then(() => loadHouses());
     }
 
-    function searchAddress() {
-      let query = document.getElementById("searchBox").value;
-      if (query.trim() === "") return alert("Bitte eine Adresse eingeben!");
-
-      L.Control.Geocoder.nominatim().geocode(query, function(results) {
-        if (results.length) {
-          let marker = L.marker(results[0].center).addTo(map);
-          map.setView(results[0].center, 16);
-        } else {
-          alert("Adresse nicht gefunden!");
-        }
-      });
-    }
-
     function loadHouses() {
       fetch(`${BACKEND_URL}/get-houses`)
         .then(response => response.json())
@@ -190,7 +176,29 @@
       }
 
       
-      // 📌 Adresssuche richtig implementieren
+
+      // 🔍 **Auto-Suggest für Adresssuche**
+      document.getElementById("searchBox").addEventListener("input", function () {
+        let query = this.value.trim();
+        if (query.length < 3) return;
+
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+          .then(response => response.json())
+          .then(data => {
+            let suggestionsList = document.getElementById("suggestions");
+            suggestionsList.innerHTML = "";
+
+            data.forEach(item => {
+              let option = document.createElement("option");
+              option.value = item.display_name;
+              suggestionsList.appendChild(option);
+            });
+          })
+          .catch(error => console.error("Fehler beim Abrufen der Vorschläge:", error));
+      });
+
+      // 🔍 **Suche mit Button oder Enter-Taste**
+      let searchMarker = null;
       function searchAddress() {
         let query = document.getElementById("searchBox").value.trim();
         if (query === "") {
@@ -198,24 +206,29 @@
           return;
         }
 
-        // 🌍 Nominatim Geocoder benutzen
         L.Control.Geocoder.nominatim().geocode(query, function(results) {
           if (results.length === 0) {
             alert("❌ Adresse nicht gefunden!");
             return;
           }
 
-          let result = results[0]; // Erstes Suchergebnis nehmen
-          let latlng = result.center; // Koordinaten des Ergebnisses
+          let latlng = results[0].center;
 
-          // 🔍 Karte zum gefundenen Punkt zoomen
+          if (searchMarker) {
+            map.removeLayer(searchMarker);
+          }
+
           map.setView(latlng, 16);
-
-          // 📍 Marker setzen
-          let marker = L.marker(latlng).addTo(map).bindPopup(`<b>${result.name}</b>`).openPopup();
+          searchMarker = L.marker(latlng)
+            .addTo(map)
+            .bindPopup(`<b>${results[0].name || query}</b>`)
+            .openPopup();
         });
       }
 
+      document.getElementById("searchBox").addEventListener("change", function () {
+        searchAddress();
+      });
 
     loadDrawings();
     loadHouses();

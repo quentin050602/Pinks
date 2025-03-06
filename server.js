@@ -16,22 +16,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// 📌 Zeichnungen speichern (inkl. Farben)
-app.get('/get-drawings', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT data FROM drawings WHERE id = 1');
-    
-    if (result.rows.length === 0 || !result.rows[0].data) {
-      return res.json({ type: "FeatureCollection", features: [] });
-    }
-
-    res.json(result.rows[0].data);
-  } catch (error) {
-    console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 
 // 📌 Zeichnungen abrufen (mit Farben)
 app.get('/get-drawings', async (req, res) => {
