@@ -16,8 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-
-// 📌 Zeichnungen abrufen (mit Farben)
+// 📌 Zeichnungen abrufen
 app.get('/get-drawings', async (req, res) => {
   try {
     const result = await pool.query('SELECT data FROM drawings WHERE id = 1');
@@ -26,6 +25,22 @@ app.get('/get-drawings', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 📌 Zeichnungen speichern (NEU!)
+app.post('/save-drawings', async (req, res) => {
+  const { data } = req.body;
+  if (!data) {
+    return res.status(400).json({ success: false, error: "Zeichnungsdaten fehlen" });
+  }
+
+  try {
+    await pool.query('UPDATE drawings SET data = $1 WHERE id = 1', [JSON.stringify(data)]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -55,6 +70,8 @@ app.post('/save-house', async (req, res) => {
       ON CONFLICT (lat, lon) 
       DO UPDATE SET full_address = $3, interest = $4, family_name = $5
     `, [lat, lon, address, interest, familyName]);
+
+    console.log(`✅ Haus gespeichert: ${address}, Interesse: ${interest}`);
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Speichern des Hauses:", error);
@@ -84,9 +101,11 @@ app.post('/delete-house', async (req, res) => {
     const result = await pool.query('DELETE FROM houses WHERE lat = $1 AND lon = $2 RETURNING *', [lat, lon]);
 
     if (result.rowCount === 0) {
+      console.log(`⚠️ Haus nicht gefunden: ${lat}, ${lon}`);
       return res.status(404).json({ success: false, error: "Haus nicht gefunden" });
     }
 
+    console.log(`✅ Haus gelöscht: ${lat}, ${lon}`);
     res.json({ success: true });
   } catch (error) {
     console.error("❌ Fehler beim Löschen des Hauses:", error);
@@ -96,5 +115,4 @@ app.post('/delete-house', async (req, res) => {
 
 // 📌 Server starten
 app.listen(PORT, () => console.log(`🚀 Server läuft auf Port ${PORT}`));
-
 

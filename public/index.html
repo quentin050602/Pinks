@@ -31,46 +31,44 @@
 
 
   <script>
-    const BACKEND_URL = "https://pinks.onrender.com";
+      const BACKEND_URL = "https://pinks.onrender.com";
 
-    var map = L.map('map').setView([26.1224, -80.1373], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+      var map = L.map('map').setView([26.1224, -80.1373], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
+      var drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
 
-    var drawControl = new L.Control.Draw({
-      edit: { featureGroup: drawnItems },
-      draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
-    });
-    map.addControl(drawControl);
+      var drawControl = new L.Control.Draw({
+          edit: { featureGroup: drawnItems },
+          draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
+      });
+      map.addControl(drawControl);
 
-    var icons = {
-      "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
-      "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
-      "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
-      "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
-    };
+      var icons = {
+          "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
+          "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
+          "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
+          "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
+      };
 
-    map.on(L.Draw.Event.CREATED, function (event) {
-      var layer = event.layer;
-      drawnItems.addLayer(layer);
+      map.on(L.Draw.Event.CREATED, function (event) {
+          var layer = event.layer;
+          drawnItems.addLayer(layer);
 
-      if (layer instanceof L.Marker) {
-        getAddress(layer.getLatLng(), function(address) {
-          showHousePopup(layer, address, layer);
-        });
-      } else {
-        chooseColor(layer);
+          if (layer instanceof L.Marker) {
+              getAddress(layer.getLatLng(), function(address) {
+                  showHousePopup(layer, address);
+              });
+          }
+      });
+
+      function getAddress(latlng, callback) {
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+              .then(response => response.json())
+              .then(data => callback(data.display_name || "Unbekannte Adresse"))
+              .catch(() => callback("Adresse nicht gefunden"));
       }
-    });
-
-    function getAddress(latlng, callback) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
-        .then(response => response.json())
-        .then(data => callback(data.display_name || "Unbekannte Adresse"))
-        .catch(() => callback("Adresse nicht gefunden"));
-    }
 
       function showHousePopup(layer, address) {
           let popupContent = `
@@ -78,28 +76,28 @@
               <label>Familienname:</label>
               <input type="text" id="familyName" placeholder="Nachname eingeben" />
               <p>Hat dieser Haushalt Interesse?</p>
-              <button onclick="setInterest('${address}', ${layer._leaflet_id || 'null'}, 'ja')">Ja</button>
-              <button onclick="setInterest('${address}', ${layer._leaflet_id || 'null'}, 'nein')">Nein</button>
-              <button onclick="setInterest('${address}', ${layer._leaflet_id || 'null'}, 'vielleicht')">Vielleicht</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'ja')">Ja</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'nein')">Nein</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'vielleicht')">Vielleicht</button>
           `;
 
           layer.bindPopup(popupContent).openPopup();
 
-          // ✅ Direkte Speicherung mit "vielleicht" als Standard
-          setInterest(address, layer._leaflet_id || 'null', 'vielleicht');
+          setTimeout(() => {
+              layer.openPopup();
+          }, 100);
       }
-
 
       function setInterest(address, layerId, interest) {
           var familyName = document.getElementById("familyName") ? document.getElementById("familyName").value : "Unbekannt";
-          var layer = drawnItems.getLayer(layerId) || searchMarker; // 🔥 Falls `layerId` nicht existiert, `searchMarker` nehmen
+          var layer = drawnItems.getLayer(layerId) || searchMarker;
 
           if (!layer) {
               console.error("❌ Kein gültiger Marker gefunden.");
               return;
           }
 
-          layer.setIcon(icons[interest]); // ✅ Icon setzen
+          layer.setIcon(icons[interest]);
 
           fetch(`${BACKEND_URL}/save-house`, {
               method: 'POST',
@@ -113,36 +111,39 @@
               })
           }).then(() => {
               console.log("✅ Haus gespeichert:", address);
-              loadHouses(); // 🔥 Damit die Änderungen sofort sichtbar sind.
+              loadHouses();
           }).catch(error => console.error("❌ Fehler beim Speichern:", error));
       }
 
+      function loadHouses() {
+          fetch(`${BACKEND_URL}/get-houses`)
+              .then(response => response.json())
+              .then(data => {
+                  drawnItems.clearLayers();
+                  data.forEach(house => {
+                      var marker = L.marker([house.lat, house.lon], {
+                          icon: icons[house.interest || "default"]
+                      }).addTo(drawnItems)
+                      .bindPopup(`
+                          <p><strong>Familie ${house.family_name || "Unbekannt"}</strong></p>
+                          <p>${house.full_address || "Adresse nicht gefunden"}</p>
+                          <p>Interesse: ${house.interest || "Unbekannt"}</p>
+                          <button onclick="deleteHouse(${house.lat}, ${house.lon})">Löschen</button>
+                      `);
+                  });
 
-    function loadHouses() {
-      fetch(`${BACKEND_URL}/get-houses`)
-        .then(response => response.json())
-        .then(data => {
-          drawnItems.clearLayers();
-          data.forEach(house => {
-            var marker = L.marker([house.lat, house.lon], { icon: icons[house.interest || "default"] })
-              .bindPopup(`
-                <p><strong>Familie ${house.family_name || "Unbekannt"}</strong></p>
-                <p>${house.full_address || "Adresse nicht gefunden"}</p>
-                <p>Interesse: ${house.interest || "Unbekannt"}</p>
-                <button onclick="deleteHouse(${house.lat}, ${house.lon})">Löschen</button>
-              `);
-            drawnItems.addLayer(marker);
-          });
-        });
-    }
+                  console.log("✅ Häuser erfolgreich geladen!");
+              })
+              .catch(error => console.error("❌ Fehler beim Laden der Häuser:", error));
+      }
 
       function saveDrawings() {
-          let geoJsonData = drawnItems.toGeoJSON(); // GeoJSON der Zeichnungen abrufen
+          let geoJsonData = drawnItems.toGeoJSON();
 
           fetch(`${BACKEND_URL}/save-drawings`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(geoJsonData) // Direkt speichern
+              body: JSON.stringify(geoJsonData)
           })
           .then(response => response.json())
           .then(data => {
@@ -155,50 +156,6 @@
           .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
       }
 
-
-      
-      function saveDrawings() {
-          let geoJsonData = drawnItems.toGeoJSON(); // GeoJSON der Zeichnungen abrufen
-
-          fetch(`${BACKEND_URL}/save-drawings`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(geoJsonData) // Direkt speichern
-          })
-          .then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  console.log("✅ Zeichnungen erfolgreich gespeichert!");
-              } else {
-                  console.error("❌ Fehler beim Speichern der Zeichnungen:", data.error);
-              }
-          })
-          .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
-      }
-
-      
-
-      // 🔍 **Auto-Suggest für Adresssuche**
-      document.getElementById("searchBox").addEventListener("input", function () {
-        let query = this.value.trim();
-        if (query.length < 3) return;
-
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
-          .then(response => response.json())
-          .then(data => {
-            let suggestionsList = document.getElementById("suggestions");
-            suggestionsList.innerHTML = "";
-
-            data.forEach(item => {
-              let option = document.createElement("option");
-              option.value = item.display_name;
-              suggestionsList.appendChild(option);
-            });
-          })
-          .catch(error => console.error("Fehler beim Abrufen der Vorschläge:", error));
-      });
-
-      // 🔍 **Suche mit Button oder Enter-Taste**
       let searchMarker = null;
       function searchAddress() {
           let query = document.getElementById("searchBox").value.trim();
@@ -222,18 +179,13 @@
                       lng: parseFloat(data[0].lon)
                   };
 
-                  // Falls bereits ein Marker existiert, entfernen
                   if (searchMarker) {
                       map.removeLayer(searchMarker);
                   }
 
-                  // Setze neuen Marker
                   searchMarker = L.marker(latlng, { icon: icons["default"] }).addTo(map);
-
-                  // Ansicht auf neue Position setzen
                   map.setView(latlng, 16);
 
-                  // Adresse abrufen und Eingabeformular anzeigen
                   getAddress(latlng, function(address) {
                       showHousePopup(searchMarker, address);
                   });
@@ -241,13 +193,13 @@
               .catch(error => console.error("❌ Fehler bei der Adresssuche:", error));
       }
 
-
       document.getElementById("searchBox").addEventListener("change", function () {
-        searchAddress();
+          searchAddress();
       });
 
-    loadDrawings();
-    loadHouses();
+      loadHouses();
+      loadDrawings();
+
   </script>
 </body>
 </html>
