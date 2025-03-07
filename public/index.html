@@ -136,17 +136,33 @@
               })
               .catch(error => console.error("❌ Fehler beim Laden der Häuser:", error));
       }
+      
+      
+    //Zeichnungen direkt speichern ohne knopf
+      
+      map.on(L.Draw.Event.CREATED, function (event) {
+          var layer = event.layer;
+          drawnItems.addLayer(layer);
+          console.log("🖌️ Neue Zeichnung hinzugefügt!");
 
+          // 🔥 Zeichnung wird direkt nach Erstellung gespeichert
+          saveDrawings();
+      });
+
+      // Zeichnungen Speichern
       function saveDrawings() {
           let geoJsonData = drawnItems.toGeoJSON();
+          console.log("📡 Sende Zeichnungsdaten an Backend:", geoJsonData);
 
           fetch(`${BACKEND_URL}/save-drawings`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(geoJsonData)
+              body: JSON.stringify({ data: geoJsonData }) // 🔥 Stelle sicher, dass "data" richtig gesendet wird
           })
           .then(response => response.json())
           .then(data => {
+              console.log("✅ Antwort vom Backend:", data);
+
               if (data.success) {
                   console.log("✅ Zeichnungen erfolgreich gespeichert!");
               } else {
@@ -154,7 +170,68 @@
               }
           })
           .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
+          
+          
+          
       }
+//zeichnngen laden
+ 
+        function loadDrawings() {
+            fetch(`${BACKEND_URL}/get-drawings`)
+            .then(response => response.json())
+            .then(data => {
+             console.log("📡 Zeichnungen vom Backend erhalten:", data);
+
+             if (typeof data === "string") {
+                 data = JSON.parse(data); // Falls Backend JSON als String sendet
+             }
+
+             drawnItems.clearLayers(); // 🔥 Entfernt alte Zeichnungen, um doppelte Einträge zu vermeiden
+
+             let loadedDrawings = L.geoJSON(data).addTo(drawnItems);
+             
+             enableDrawingDeletion(); // 🔥 Klickbares Löschen aktivieren
+
+             console.log("✅ Zeichnungen erfolgreich geladen!");
+         })
+         .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
+ }
+
+
+      // 🔥 Aktiviert Klick-Event für das Löschen von Zeichnungen
+      function enableDrawingDeletion() {
+          drawnItems.eachLayer(layer => {
+              layer.on('click', function () {
+                  if (confirm("Möchtest du diese Zeichnung wirklich löschen?")) {
+                      deleteDrawings(layer); // 🔥 Zeichnung aus DB entfernen
+                  }
+              });
+          });
+      }
+
+      // 🔥 Zeichnung löschen und in der Datenbank aktualisieren
+      function deleteDrawings(layer) {
+          drawnItems.removeLayer(layer); // Entfernt das Layer von der Karte
+
+          let geoJsonData = drawnItems.toGeoJSON(); // Holt alle restlichen Zeichnungen
+          console.log("📡 Zeichnung wird gelöscht, aktualisiere Datenbank:", geoJsonData);
+
+          fetch(`${BACKEND_URL}/save-drawings`, { // 🔥 Speichert nur die verbleibenden Zeichnungen
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: geoJsonData }) // Aktualisiert die Datenbank mit den restlichen Zeichnungen
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  console.log("✅ Zeichnung erfolgreich gelöscht!");
+              } else {
+                  console.error("❌ Fehler beim Löschen der Zeichnung:", data.error);
+              }
+          })
+          .catch(error => console.error("❌ Netzwerkfehler beim Löschen der Zeichnung:", error));
+      }
+
 
       let searchMarker = null;
       function searchAddress() {

@@ -16,34 +16,62 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// 📌 Zeichnungen abrufen
-app.get('/get-drawings', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT data FROM drawings WHERE id = 1');
-    const data = result.rows.length > 0 ? result.rows[0].data : { type: "FeatureCollection", features: [] };
 
-    res.json(data);
-  } catch (error) {
-    console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+//Zeichnungen abrufen
+
+app.get('/get-drawings', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT data FROM drawings WHERE id = 1');
+        if (result.rows.length > 0) {
+            let data = result.rows[0].data;
+
+            // Falls `data` als String gespeichert wurde, in echtes JSON umwandeln
+            if (typeof data === "string") {
+                data = JSON.parse(data);
+            }
+
+            res.json(data);
+        } else {
+            // Falls keine Daten vorhanden sind, leeres GeoJSON zurückgeben
+            res.json({ type: "FeatureCollection", features: [] });
+        }
+    } catch (error) {
+        console.error("❌ Fehler beim Abrufen der Zeichnungen:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
+
 
 // 📌 Zeichnungen speichern (NEU!)
 app.post('/save-drawings', async (req, res) => {
-  const { data } = req.body;
-  if (!data) {
-    return res.status(400).json({ success: false, error: "Zeichnungsdaten fehlen" });
-  }
+    const { data } = req.body;
+    if (!data) {
+        console.error("❌ Fehler: Keine Zeichnungsdaten erhalten!");
+        return res.status(400).json({ success: false, error: "Zeichnungsdaten fehlen" });
+    }
 
-  try {
-    await pool.query('UPDATE drawings SET data = $1 WHERE id = 1', [JSON.stringify(data)]);
-    res.json({ success: true });
-  } catch (error) {
-    console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+    try {
+        console.log("📡 Erhalte Zeichnungen:", JSON.stringify(data)); // Debugging
+
+        // Prüfen, ob `id=1` existiert
+        const check = await pool.query('SELECT * FROM drawings WHERE id = 1');
+
+        if (check.rowCount > 0) {
+            // 🔄 Falls vorhanden, aktualisieren
+            await pool.query('UPDATE drawings SET data = $1 WHERE id = 1', [JSON.stringify(data)]);
+        } else {
+            // ➕ Falls nicht vorhanden, neuen Eintrag erstellen
+            await pool.query('INSERT INTO drawings (id, data) VALUES (1, $1)', [JSON.stringify(data)]);
+        }
+
+        console.log("✅ Zeichnungen erfolgreich gespeichert!");
+        res.json({ success: true });
+    } catch (error) {
+        console.error("❌ Fehler beim Speichern der Zeichnungen:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
+
 
 // 📌 Zeichnungen endgültig löschen
 app.post('/delete-drawings', async (req, res) => {
