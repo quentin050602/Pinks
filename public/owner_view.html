@@ -48,7 +48,7 @@
             background: #218838;
         }
 
-        #map-container {
+        .map-container {
             width: 80%;
             max-width: 1200px;
             height: 75vh;
@@ -59,7 +59,7 @@
             position: relative;
         }
 
-        #map {
+        .map {
             height: 100%;
             width: 100%;
             border-radius: 10px;
@@ -128,16 +128,7 @@
                 window.location.href = "index.html"; // 🔥 Falls kein Owner → Zur Login-Seite
             }
 
-            // 🔐 Logout-Funktion
-            function logout() {
-                sessionStorage.removeItem("userRole");
-                window.location.href = "index.html";
-            }
-
-            // ➕ Weiterleitung zur Registrierungsseite
-            function goToRegister() {
-                window.location.href = "register.html";
-            }
+         
 
             const BACKEND_URL = "https://pinks.onrender.com";
 
@@ -195,7 +186,16 @@
                layer.openPopup();
            }, 100);
        }
- 
+       // 🔐 Logout-Funktion
+       function logout() {
+           sessionStorage.removeItem("userRole");
+           window.location.href = "index.html";
+       }
+
+       // ➕ Weiterleitung zur Registrierungsseite
+       function goToRegister() {
+           window.location.href = "register.html";
+       }
        function setInterest(address, layerId, interest) {
            var familyName = document.getElementById("familyName") ? document.getElementById("familyName").value : "Unbekannt";
            var layer = drawnItems.getLayer(layerId) || searchMarker;
