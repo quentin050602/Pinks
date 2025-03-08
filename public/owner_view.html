@@ -58,16 +58,6 @@
         width: 100%;
     }
 
-    .search-container {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 1000;
-        background: white;
-        padding: 5px;
-        border-radius: 5px;
-    }
-
   </style>
 </head>
 <body>
@@ -87,55 +77,56 @@
   </div>
 
   <script>
-      // 🔐 Überprüfen, ob der User eingeloggt ist
-      if (!sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") !== "owner") {
-          window.location.href = "index.html"; // 🔥 Falls kein Owner → Zur Login-Seite
-      }
+      document.addEventListener("DOMContentLoaded", function () {
 
-      // 🔐 Logout-Funktion
-      function logout() {
-          sessionStorage.removeItem("userRole");
-          window.location.href = "index.html";
-      }
-
-      // ➕ Weiterleitung zur Registrierungsseite
-      function goToRegister() {
-          window.location.href = "register.html";
-      }
-
-      const BACKEND_URL = "https://pinks.onrender.com";
-
-      var map = L.map('map').setView([26.1224, -80.1373], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-      var drawnItems = new L.FeatureGroup();
-      map.addLayer(drawnItems);
-
-      var drawControl = new L.Control.Draw({
-          edit: { featureGroup: drawnItems },
-          draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
-      });
-      map.addControl(drawControl);
-      
-      
-
-      var icons = {
-          "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
-          "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
-          "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
-          "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
-      };
-
-      map.on(L.Draw.Event.CREATED, function (event) {
-          var layer = event.layer;
-          drawnItems.addLayer(layer);
-
-          if (layer instanceof L.Marker) {
-              getAddress(layer.getLatLng(), function(address) {
-                  showHousePopup(layer, address);
-              });
+          // 🔐 Überprüfen, ob der User eingeloggt ist
+          if (!sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") !== "owner") {
+              window.location.href = "index.html"; // 🔥 Falls kein Owner → Zur Login-Seite
           }
-      });
+
+          // 🔐 Logout-Funktion
+          function logout() {
+              sessionStorage.removeItem("userRole");
+              window.location.href = "index.html";
+          }
+
+          // ➕ Weiterleitung zur Registrierungsseite
+          function goToRegister() {
+              window.location.href = "register.html";
+          }
+
+          const BACKEND_URL = "https://pinks.onrender.com";
+
+          var map = L.map('map').setView([26.1224, -80.1373], 13);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+          var drawnItems = new L.FeatureGroup();
+          map.addLayer(drawnItems);
+
+          var drawControl = new L.Control.Draw({
+              edit: { featureGroup: drawnItems },
+              draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
+          });
+          map.addControl(drawControl);
+
+          var icons = {
+              "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
+              "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
+              "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
+              "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
+          };
+
+          map.on(L.Draw.Event.CREATED, function (event) {
+              var layer = event.layer;
+              drawnItems.addLayer(layer);
+
+              if (layer instanceof L.Marker) {
+                  getAddress(layer.getLatLng(), function(address) {
+                      showHousePopup(layer, address);
+                  });
+              }
+          });
+
 
       function getAddress(latlng, callback) {
           fetch(https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng})
