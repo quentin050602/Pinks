@@ -33,29 +33,26 @@ app.post('/login', async (req, res) => {
 
     try {
         const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
-        console.log("🔍 Datenbank-Ergebnis:", result.rows);
 
         if (result.rowCount === 0) {
-            console.log("❌ Benutzer nicht gefunden!");
             return res.status(401).json({ success: false, error: "Benutzer nicht gefunden" });
         }
 
         const user = result.rows[0];
-        console.log("🔍 Gespeichertes Passwort (Klartext):", user.password);
 
-        // Direktes Vergleichen ohne bcrypt
         if (password !== user.password) {
-            console.log("❌ Falsches Passwort!");
             return res.status(401).json({ success: false, error: "Falsches Passwort" });
         }
 
         console.log(`✅ Benutzer ${username} erfolgreich eingeloggt.`);
-        res.json({ success: true, role: user.role });
+        res.json({ success: true, username: user.username, role: user.role });
+
     } catch (error) {
         console.error("❌ Fehler beim Login:", error);
         res.status(500).json({ success: false, error: "Serverfehler" });
     }
 });
+
 
 
 // 📌 Benutzer anlegen (Nur für Owner)

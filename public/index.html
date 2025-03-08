@@ -51,6 +51,8 @@
     </div>
 
     <script>
+        const BACKEND_URL = "https://pinks.onrender.com"; // Falls gehostet
+
         async function login() {
             console.log("🔹 login() wurde aufgerufen!");
 
@@ -62,27 +64,35 @@
                 return;
             }
 
-            const response = await fetch("/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
-            });
+            try {
+                const response = await fetch(`${BACKEND_URL}/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
 
-            const data = await response.json();
-            console.log("📡 Antwort vom Server:", data);
+                const data = await response.json();
+                console.log("📡 Antwort vom Server:", data);
 
-            if (data.success) {
-                sessionStorage.setItem("userRole", data.role);
-                
-                if (data.role === "owner") {
-                    window.location.href = "owner_view.html";
-                } else if (data.role === "sales") {
-                    window.location.href = "sales_view.html";
+                if (data.success) {
+                    sessionStorage.setItem("userRole", data.role);
+                    sessionStorage.setItem("username", data.username);
+                    
+                    console.log("✅ Gespeicherte Session:", sessionStorage.getItem("username"), sessionStorage.getItem("userRole"));
+
+                    if (data.role === "owner") {
+                        window.location.href = "owner_view.html";
+                    } else if (data.role === "sales") {
+                        window.location.href = "sales_view.html";
+                    } else {
+                        alert("❌ Unbekannte Rolle!");
+                    }
                 } else {
-                    alert("❌ Unbekannte Rolle!");
+                    document.getElementById("error-message").style.display = "block";
                 }
-            } else {
-                document.getElementById("error-message").style.display = "block";
+            } catch (error) {
+                console.error("❌ Fehler beim Login:", error);
+                alert("❌ Serverfehler! Bitte später erneut versuchen.");
             }
         }
     </script>
