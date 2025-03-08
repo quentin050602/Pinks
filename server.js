@@ -1,6 +1,8 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,10 +13,68 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+
+
+// 📌 **Login-Seite bereitstellen**
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 📌 **Login-Logik**
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+
+        if (result.rowCount === 0) {
+            return res.status(401).json({ success: false, error: "Benutzer nicht gefunden" });
+        }
+
+        const user = result.rows[0];
+        const passwordMatch = await bcrypt.compare(password, user.password);
+
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, error: "Falsches Passwort" });
+        }
+
+        console.log(`✅ Benutzer ${username} erfolgreich eingeloggt.`);
+        res.json({ success: true, role: user.role });
+    } catch (error) {
+        console.error("❌ Fehler beim Login:", error);
+        res.status(500).json({ success: false, error: "Serverfehler" });
+    }
+});
+
+// 📌 **Registrierung (Nur für Owner)**
+app.post('/register', async (req, res) => {
+    const { username, password, role, first_name, last_name, email, phone } = req.body;
+
+    if (!username || !password || !role || !first_name || !last_name || !email) {
+        return res.status(400).json({ success: false, error: "Alle Felder außer Telefon sind erforderlich." });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await pool.query(`
+            INSERT INTO users (username, password, role, first_name, last_name, email, phone) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [username, hashedPassword, role, first_name, last_name, email, phone]);
+
+        console.log(`✅ Benutzer ${username} registriert!`);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("❌ Fehler bei der Registrierung:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 
 
 //Zeichnungen abrufen

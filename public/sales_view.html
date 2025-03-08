@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Fort Lauderdale Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <style>
+    #map { height: 100vh; width: 100%; }
+    .search-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="search-container">
+    <input id="searchBox" type="text" placeholder="Adresse suchen..." />
+    <button onclick="searchAddress()">🔍</button>
+  </div>
+
+
+  <script>
+      const BACKEND_URL = "https://pinks.onrender.com";
+
+      var map = L.map('map').setView([26.1224, -80.1373], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+      var drawnItems = new L.FeatureGroup();
+      map.addLayer(drawnItems);
+
+      var drawControl = new L.Control.Draw({
+          edit: { featureGroup: drawnItems },
+          draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
+      });
+      map.addControl(drawControl);
+
+      var icons = {
+          "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
+          "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
+          "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
+          "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
+      };
+
+      map.on(L.Draw.Event.CREATED, function (event) {
+          var layer = event.layer;
+          drawnItems.addLayer(layer);
+
+          if (layer instanceof L.Marker) {
+              getAddress(layer.getLatLng(), function(address) {
+                  showHousePopup(layer, address);
+              });
+          }
+      });
+
+      function getAddress(latlng, callback) {
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+              .then(response => response.json())
+              .then(data => callback(data.display_name || "Unbekannte Adresse"))
+              .catch(() => callback("Adresse nicht gefunden"));
+      }
+
+      function showHousePopup(layer, address) {
+          let popupContent = `
+              <p><strong>Adresse:</strong> ${address}</p>
+              <label>Familienname:</label>
+              <input type="text" id="familyName" placeholder="Nachname eingeben" />
+              <p>Hat dieser Haushalt Interesse?</p>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'ja')">Ja</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'nein')">Nein</button>
+              <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'vielleicht')">Vielleicht</button>
+          `;
+
+          layer.bindPopup(popupContent).openPopup();
+
+          setTimeout(() => {
+              layer.openPopup();
+          }, 100);
+      }
+
+      function setInterest(address, layerId, interest) {
+          var familyName = document.getElementById("familyName") ? document.getElementById("familyName").value : "Unbekannt";
+          var layer = drawnItems.getLayer(layerId) || searchMarker;
+
+          if (!layer) {
+              console.error("❌ Kein gültiger Marker gefunden.");
+              return;
+          }
+
+          layer.setIcon(icons[interest]);
+
+          fetch(`${BACKEND_URL}/save-house`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  lat: layer.getLatLng().lat,
+                  lon: layer.getLatLng().lng,
+                  interest,
+                  address,
+                  familyName
+              })
+          }).then(() => {
+              console.log("✅ Haus gespeichert:", address);
+              loadHouses();
+          }).catch(error => console.error("❌ Fehler beim Speichern:", error));
+      }
+
+      function loadHouses() {
+          fetch(`${BACKEND_URL}/get-houses`)
+              .then(response => response.json())
+              .then(data => {
+                  drawnItems.clearLayers();
+                  data.forEach(house => {
+                      var marker = L.marker([house.lat, house.lon], {
+                          icon: icons[house.interest || "default"]
+                      }).addTo(drawnItems)
+                      .bindPopup(`
+                          <p><strong>Familie ${house.family_name || "Unbekannt"}</strong></p>
+                          <p>${house.full_address || "Adresse nicht gefunden"}</p>
+                          <p>Interesse: ${house.interest || "Unbekannt"}</p>
+                          <button onclick="deleteHouse(${house.lat}, ${house.lon})">Löschen</button>
+                      `);
+                  });
+
+                  console.log("✅ Häuser erfolgreich geladen!");
+              })
+              .catch(error => console.error("❌ Fehler beim Laden der Häuser:", error));
+      }
+      
+      
+    //Zeichnungen direkt speichern ohne knopf
+      
+      map.on(L.Draw.Event.CREATED, function (event) {
+          var layer = event.layer;
+          drawnItems.addLayer(layer);
+          console.log("🖌️ Neue Zeichnung hinzugefügt!");
+
+          // 🔥 Zeichnung wird direkt nach Erstellung gespeichert
+          saveDrawings();
+      });
+
+      // Zeichnungen Speichern
+      function saveDrawings() {
+          let geoJsonData = drawnItems.toGeoJSON();
+          console.log("📡 Sende Zeichnungsdaten an Backend:", geoJsonData);
+
+          fetch(`${BACKEND_URL}/save-drawings`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: geoJsonData }) // 🔥 Stelle sicher, dass "data" richtig gesendet wird
+          })
+          .then(response => response.json())
+          .then(data => {
+              console.log("✅ Antwort vom Backend:", data);
+
+              if (data.success) {
+                  console.log("✅ Zeichnungen erfolgreich gespeichert!");
+              } else {
+                  console.error("❌ Fehler beim Speichern der Zeichnungen:", data.error);
+              }
+          })
+          .catch(error => console.error("❌ Netzwerkfehler beim Speichern der Zeichnungen:", error));
+          
+          
+          
+      }
+//zeichnngen laden
+ 
+        function loadDrawings() {
+            fetch(`${BACKEND_URL}/get-drawings`)
+            .then(response => response.json())
+            .then(data => {
+             console.log("📡 Zeichnungen vom Backend erhalten:", data);
+
+             if (typeof data === "string") {
+                 data = JSON.parse(data); // Falls Backend JSON als String sendet
+             }
+
+             drawnItems.clearLayers(); // 🔥 Entfernt alte Zeichnungen, um doppelte Einträge zu vermeiden
+
+             let loadedDrawings = L.geoJSON(data).addTo(drawnItems);
+             
+             enableDrawingDeletion(); // 🔥 Klickbares Löschen aktivieren
+
+             console.log("✅ Zeichnungen erfolgreich geladen!");
+         })
+         .catch(error => console.error("❌ Fehler beim Laden der Zeichnungen:", error));
+ }
+
+
+      // 🔥 Aktiviert Klick-Event für das Löschen von Zeichnungen
+      function enableDrawingDeletion() {
+          drawnItems.eachLayer(layer => {
+              layer.on('click', function () {
+                  if (confirm("Möchtest du diese Zeichnung wirklich löschen?")) {
+                      deleteDrawings(layer); // 🔥 Zeichnung aus DB entfernen
+                  }
+              });
+          });
+      }
+
+      // 🔥 Zeichnung löschen und in der Datenbank aktualisieren
+      function deleteDrawings(layer) {
+          drawnItems.removeLayer(layer); // Entfernt das Layer von der Karte
+
+          let geoJsonData = drawnItems.toGeoJSON(); // Holt alle restlichen Zeichnungen
+          console.log("📡 Zeichnung wird gelöscht, aktualisiere Datenbank:", geoJsonData);
+
+          fetch(`${BACKEND_URL}/save-drawings`, { // 🔥 Speichert nur die verbleibenden Zeichnungen
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data: geoJsonData }) // Aktualisiert die Datenbank mit den restlichen Zeichnungen
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  console.log("✅ Zeichnung erfolgreich gelöscht!");
+              } else {
+                  console.error("❌ Fehler beim Löschen der Zeichnung:", data.error);
+              }
+          })
+          .catch(error => console.error("❌ Netzwerkfehler beim Löschen der Zeichnung:", error));
+      }
+
+
+      let searchMarker = null;
+      function searchAddress() {
+          let query = document.getElementById("searchBox").value.trim();
+          if (query === "") {
+              alert("❌ Bitte eine Adresse eingeben!");
+              return;
+          }
+
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+              .then(response => response.json())
+              .then(data => {
+                  console.log("📡 API Antwort:", data);
+
+                  if (data.length === 0) {
+                      alert("❌ Adresse nicht gefunden!");
+                      return;
+                  }
+
+                  let latlng = {
+                      lat: parseFloat(data[0].lat),
+                      lng: parseFloat(data[0].lon)
+                  };
+
+                  if (searchMarker) {
+                      map.removeLayer(searchMarker);
+                  }
+
+                  searchMarker = L.marker(latlng, { icon: icons["default"] }).addTo(map);
+                  map.setView(latlng, 16);
+
+                  getAddress(latlng, function(address) {
+                      showHousePopup(searchMarker, address);
+                  });
+              })
+              .catch(error => console.error("❌ Fehler bei der Adresssuche:", error));
+      }
+
+      document.getElementById("searchBox").addEventListener("change", function () {
+          searchAddress();
+      });
+      
+      function deleteHouse(lat, lon) {
+          console.log(`📡 Sende Löschanfrage für: lat=${lat}, lon=${lon}`);
+
+          fetch(`${BACKEND_URL}/delete-house`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat, lon })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  console.log(`✅ Haus erfolgreich gelöscht: lat=${lat}, lon=${lon}`);
+
+                  // 🔥 Entferne den Marker aus `drawnItems`
+                  drawnItems.eachLayer(layer => {
+                      if (layer instanceof L.Marker) {
+                          let markerLatLng = layer.getLatLng();
+                          if (markerLatLng.lat === lat && markerLatLng.lng === lon) {
+                              drawnItems.removeLayer(layer);
+                              console.log("🗑️ Marker von der Karte entfernt!");
+                          }
+                      }
+                  });
+
+                  // 🔄 Aktualisiere die Liste der Häuser
+                  loadHouses();
+              } else {
+                  console.error("❌ Fehler beim Löschen des Hauses:", data.error);
+              }
+          })
+          .catch(error => console.error("❌ Netzwerkfehler beim Löschen des Hauses:", error));
+      }
+
+
+      loadHouses();
+      loadDrawings();
+
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
