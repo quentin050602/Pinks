@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <title>Fort Lauderdale Map</title>
+  <title>Fort Lauderdale Map - Owner View</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
@@ -10,101 +10,81 @@
   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <style>
-    #map { height: 100vh; width: 100%; }
-    .search-container {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 5px;
-      border-radius: 5px;
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f5f5f5;
     }
-      /* Dropdown-Button */
-      .dropbtn {
-          background-color: #4CAF50;
-          color: white;
-          padding: 10px 15px;
-          font-size: 16px;
-          border: none;
-          cursor: pointer;
-          position: absolute;
-          top: 10px;
-          left: 10px;
-          border-radius: 5px;
-      }
 
-      /* Dropdown-Container */
-      .dropdown {
-          position: absolute;
-          top: 10px;
-          left: 10px;
-          display: inline-block;
-      }
+    .top-bar {
+        width: 100%;
+        padding: 10px;
+        background-color: #333;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-      /* Dropdown-Inhalt */
-      .dropdown-content {
-          display: none;
-          position: absolute;
-          background-color: white;
-          min-width: 200px;
-          box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
-          z-index: 1000;
-          border-radius: 5px;
-      }
+    .top-bar button {
+        padding: 10px;
+        background: #28a745;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        margin: 5px;
+    }
 
-      /* Links im Dropdown */
-      .dropdown-content a {
-          color: black;
-          padding: 10px;
-          text-decoration: none;
-          display: block;
-      }
+    .top-bar button:hover {
+        background: #218838;
+    }
 
-      /* Hover-Effekt */
-      .dropdown-content a:hover {
-          background-color: #f1f1f1;
-      }
+    #map-container {
+        width: 90%;
+        height: 80vh;
+        border: 2px solid #333;
+        margin-top: 10px;
+        background-color: white;
+        position: relative;
+    }
 
-      /* Zeige das Menü, wenn der Button angeklickt wird */
-      .dropdown:hover .dropdown-content {
-          display: block;
-      }
+    #map {
+        height: 100%;
+        width: 100%;
+    }
+
+    .search-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        padding: 5px;
+        border-radius: 5px;
+    }
 
   </style>
 </head>
 <body>
-    <div class="dropdown">
-        <button class="dropbtn">⚙️ Menü</button>
-        <div class="dropdown-content">
-            <a href="#" onclick="toggleDrawingTools()">✏️ Werkzeuge anzeigen/verbergen</a>
-            <a href="register.html">👤 Benutzer registrieren</a>
-            <a href="#" onclick="logout()">🚪 Logout</a>
-        </div>
-    </div>
 
-    <h2>Neuen Benutzer hinzufügen</h2>
-    <div style="padding: 10px; background: white; border-radius: 5px; max-width: 400px;">
-        <input type="text" id="newUsername" placeholder="Benutzername">
-        <input type="password" id="newPassword" placeholder="Passwort">
-        <select id="newRole">
-            <option value="sales">Sales</option>
-            <option value="owner">Owner</option>
-        </select>
-        <input type="text" id="firstName" placeholder="Vorname">
-        <input type="text" id="lastName" placeholder="Nachname">
-        <input type="email" id="email" placeholder="E-Mail">
-        <input type="text" id="phone" placeholder="Telefonnummer (optional)">
-        <button onclick="registerUser()">Benutzer anlegen</button>
-        <p id="registerMessage"></p>
-    </div>
-    
-  <div id="map"></div>
-  <div class="search-container">
-    <input id="searchBox" type="text" placeholder="Adresse suchen..." />
-    <button onclick="searchAddress()">🔍</button>
+  <!-- Top-Leiste mit Logout & Benutzer erstellen -->
+  <div class="top-bar">
+      <h2>Owner Dashboard</h2>
+      <div>
+          <button onclick="goToRegister()">➕ Benutzer erstellen</button>
+          <button onclick="logout()">🚪 Logout</button>
+      </div>
   </div>
 
+  <!-- Map Container -->
+  <div id="map-container">
+      <div id="map"></div>
+  </div>
 
   <script>
       // 🔐 Überprüfen, ob der User eingeloggt ist
@@ -116,6 +96,11 @@
       function logout() {
           sessionStorage.removeItem("userRole");
           window.location.href = "index.html";
+      }
+
+      // ➕ Weiterleitung zur Registrierungsseite
+      function goToRegister() {
+          window.location.href = "register.html";
       }
 
       const BACKEND_URL = "https://pinks.onrender.com";
@@ -153,14 +138,14 @@
       });
 
       function getAddress(latlng, callback) {
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+          fetch(https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng})
               .then(response => response.json())
               .then(data => callback(data.display_name || "Unbekannte Adresse"))
               .catch(() => callback("Adresse nicht gefunden"));
       }
 
       function showHousePopup(layer, address) {
-          let popupContent = `
+          let popupContent =
               <p><strong>Adresse:</strong> ${address}</p>
               <label>Familienname:</label>
               <input type="text" id="familyName" placeholder="Nachname eingeben" />
@@ -168,7 +153,7 @@
               <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'ja')">Ja</button>
               <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'nein')">Nein</button>
               <button onclick="setInterest('${address}', ${layer._leaflet_id}, 'vielleicht')">Vielleicht</button>
-          `;
+          ;
 
           layer.bindPopup(popupContent).openPopup();
 
@@ -188,7 +173,7 @@
 
           layer.setIcon(icons[interest]);
 
-          fetch(`${BACKEND_URL}/save-house`, {
+          fetch(${BACKEND_URL}/save-house, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -205,7 +190,7 @@
       }
 
       function loadHouses() {
-          fetch(`${BACKEND_URL}/get-houses`)
+          fetch(${BACKEND_URL}/get-houses)
               .then(response => response.json())
               .then(data => {
                   drawnItems.clearLayers();
@@ -213,12 +198,12 @@
                       var marker = L.marker([house.lat, house.lon], {
                           icon: icons[house.interest || "default"]
                       }).addTo(drawnItems)
-                      .bindPopup(`
+                      .bindPopup(
                           <p><strong>Familie ${house.family_name || "Unbekannt"}</strong></p>
                           <p>${house.full_address || "Adresse nicht gefunden"}</p>
                           <p>Interesse: ${house.interest || "Unbekannt"}</p>
                           <button onclick="deleteHouse(${house.lat}, ${house.lon})">Löschen</button>
-                      `);
+                      );
                   });
 
                   console.log("✅ Häuser erfolgreich geladen!");
@@ -266,8 +251,8 @@
           .then(data => {
               console.log("📡 Antwort vom Server:", data);
               document.getElementById("registerMessage").innerText = data.success
-                  ? `✅ Benutzer ${newUsername} erfolgreich angelegt.`
-                  : `❌ Fehler: ${data.error}`;
+                  ? ✅ Benutzer ${newUsername} erfolgreich angelegt.
+                  : ❌ Fehler: ${data.error};
           })
           .catch(error => {
               console.error("❌ Fehler bei der Registrierung:", error);
@@ -293,7 +278,7 @@
           let geoJsonData = drawnItems.toGeoJSON();
           console.log("📡 Sende Zeichnungsdaten an Backend:", geoJsonData);
 
-          fetch(`${BACKEND_URL}/save-drawings`, {
+          fetch(${BACKEND_URL}/save-drawings, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ data: geoJsonData }) // 🔥 Stelle sicher, dass "data" richtig gesendet wird
@@ -316,7 +301,7 @@
 //zeichnngen laden
  
         function loadDrawings() {
-            fetch(`${BACKEND_URL}/get-drawings`)
+            fetch(${BACKEND_URL}/get-drawings)
             .then(response => response.json())
             .then(data => {
              console.log("📡 Zeichnungen vom Backend erhalten:", data);
@@ -355,7 +340,7 @@
           let geoJsonData = drawnItems.toGeoJSON(); // Holt alle restlichen Zeichnungen
           console.log("📡 Zeichnung wird gelöscht, aktualisiere Datenbank:", geoJsonData);
 
-          fetch(`${BACKEND_URL}/save-drawings`, { // 🔥 Speichert nur die verbleibenden Zeichnungen
+          fetch(${BACKEND_URL}/save-drawings, { // 🔥 Speichert nur die verbleibenden Zeichnungen
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ data: geoJsonData }) // Aktualisiert die Datenbank mit den restlichen Zeichnungen
@@ -380,7 +365,7 @@
               return;
           }
 
-          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
+          fetch(https://nominatim.openstreetmap.org/search?format=json&q=${query})
               .then(response => response.json())
               .then(data => {
                   console.log("📡 API Antwort:", data);
@@ -414,9 +399,9 @@
       });
       
       function deleteHouse(lat, lon) {
-          console.log(`📡 Sende Löschanfrage für: lat=${lat}, lon=${lon}`);
+          console.log(📡 Sende Löschanfrage für: lat=${lat}, lon=${lon});
 
-          fetch(`${BACKEND_URL}/delete-house`, {
+          fetch(${BACKEND_URL}/delete-house, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ lat, lon })
@@ -424,9 +409,9 @@
           .then(response => response.json())
           .then(data => {
               if (data.success) {
-                  console.log(`✅ Haus erfolgreich gelöscht: lat=${lat}, lon=${lon}`);
+                  console.log(✅ Haus erfolgreich gelöscht: lat=${lat}, lon=${lon});
 
-                  // 🔥 Entferne den Marker aus `drawnItems`
+                  // 🔥 Entferne den Marker aus drawnItems
                   drawnItems.eachLayer(layer => {
                       if (layer instanceof L.Marker) {
                           let markerLatLng = layer.getLatLng();
@@ -452,8 +437,9 @@
 
   </script>
 </body>
-</html>
+<button onclick="logout()" style="position: absolute; top: 10px; left: 10px; padding: 10px;">🚪 Logout</button>
 
+</html>
 
 
 
