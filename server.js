@@ -1,7 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
+//const bcrypt = require('bcryptjs');
 const path = require('path');
 
 const app = express();
@@ -29,18 +29,23 @@ app.get('/', (req, res) => {
 // 📌 **Login-Logik**
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
+    console.log("🔍 Login-Versuch:", username, password);
 
     try {
         const result = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+        console.log("🔍 Datenbank-Ergebnis:", result.rows);
 
         if (result.rowCount === 0) {
+            console.log("❌ Benutzer nicht gefunden!");
             return res.status(401).json({ success: false, error: "Benutzer nicht gefunden" });
         }
 
         const user = result.rows[0];
-        const passwordMatch = await bcrypt.compare(password, user.password);
+        console.log("🔍 Gespeichertes Passwort (Klartext):", user.password);
 
-        if (!passwordMatch) {
+        // Direktes Vergleichen ohne bcrypt
+        if (password !== user.password) {
+            console.log("❌ Falsches Passwort!");
             return res.status(401).json({ success: false, error: "Falsches Passwort" });
         }
 
@@ -51,6 +56,7 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ success: false, error: "Serverfehler" });
     }
 });
+
 
 // 📌 **Registrierung (Nur für Owner)**
 app.post('/register', async (req, res) => {
