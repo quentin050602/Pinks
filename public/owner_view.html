@@ -1,156 +1,86 @@
 <!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="utf-8">
-    <title>Fort Lauderdale Map - Owner View</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-    
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f5f5f5;
-        }
-
-        .top-bar {
-            width: 80%;
-            max-width: 1200px;
-            padding: 15px;
-            background-color: #333;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 10px;
-            margin-top: 20px;
-        }
-
-        .top-bar button {
-            padding: 10px;
-            background: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            margin: 5px;
-        }
-
-        .top-bar button:hover {
-            background: #218838;
-        }
-
-        #map-container {
-            width: 80%;
-            max-width: 1200px;
-            height: 75vh;
-            border: 3px solid #333;
-            border-radius: 10px;
-            margin-top: 20px;
-            background-color: white;
-            position: relative;
-        }
-
-        #map {
-            height: 100%;
-            width: 100%;
-            border-radius: 10px;
-        }
-
-        .search-container {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            padding: 8px;
-            border-radius: 5px;
-            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-            display: flex;
-            gap: 5px;
-        }
-
-        .search-container input {
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-        }
-
-        .search-container button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-
-        .search-container button:hover {
-            background-color: #0056b3;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Top-Leiste mit Logout & Benutzer erstellen -->
-    <div class="top-bar">
-        <h2>Owner Dashboard</h2>
-        <div>
-            <button onclick="goToRegister()">➕ Benutzer registrieren</button>
-            <button onclick="logout()" style="background-color: red;">🚪 Logout</button>
-        </div>
-    </div>
-
-    <!-- Map Container -->
-    <div id="map-container">
-        <div id="map"></div>
-
-        <!-- 🔍 Suchleiste für Adressen -->
-        <div class="search-container">
-            <input id="searchBox" type="text" placeholder="Adresse suchen..." />
-            <button onclick="searchAddress()">🔍</button>
-        </div>
-    </div>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-
-            // 🔐 Überprüfen, ob der User eingeloggt ist
-            if (!sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") !== "owner") {
-                window.location.href = "index.html"; // 🔥 Falls kein Owner → Zur Login-Seite
-            }
-
-         
-
-            const BACKEND_URL = "https://pinks.onrender.com";
-
-            var map = L.map('map').setView([26.1224, -80.1373], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-
-            var drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-
-            var drawControl = new L.Control.Draw({
-                edit: { featureGroup: drawnItems },
-                draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
-            });
-            map.addControl(drawControl);
-
-            var icons = {
-                "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
-                "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
-                "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
-                "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
-            };
-
+ <html lang="de">
+ <head>
+   <meta charset="utf-8">
+   <title>Fort Lauderdale Map</title>
+   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+   <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+   <style>
+     #map { height: 100vh; width: 100%; }
+     .search-container {
+       position: absolute;
+       top: 10px;
+       right: 10px;
+       z-index: 1000;
+       background: white;
+       padding: 5px;
+       border-radius: 5px;
+     }
+   </style>
+ </head>
+ <body>
+     <h2>Neuen Benutzer hinzufügen</h2>
+     <div style="padding: 10px; background: white; border-radius: 5px; max-width: 400px;">
+         <input type="text" id="newUsername" placeholder="Benutzername">
+         <input type="password" id="newPassword" placeholder="Passwort">
+         <select id="newRole">
+             <option value="sales">Sales</option>
+             <option value="owner">Owner</option>
+         </select>
+         <input type="text" id="firstName" placeholder="Vorname">
+         <input type="text" id="lastName" placeholder="Nachname">
+         <input type="email" id="email" placeholder="E-Mail">
+         <input type="text" id="phone" placeholder="Telefonnummer (optional)">
+         <button onclick="registerUser()">Benutzer anlegen</button>
+         <p id="registerMessage"></p>
+     </div>
+     
+   <div id="map"></div>
+   <div class="search-container">
+     <input id="searchBox" type="text" placeholder="Adresse suchen..." />
+     <button onclick="searchAddress()">🔍</button>
+   </div>
+ 
+ 
+   <script>
+       // 🔐 Überprüfen, ob der User eingeloggt ist
+       if (!sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") !== "owner") {
+           window.location.href = "index.html"; // 🔥 Falls kein Owner → Zur Login-Seite
+       }
+ 
+       // 🔐 Logout-Funktion
+       function logout() {
+           sessionStorage.removeItem("userRole");
+           window.location.href = "index.html";
+       }
+ 
+       const BACKEND_URL = "https://pinks.onrender.com";
+ 
+       var map = L.map('map').setView([26.1224, -80.1373], 13);
+       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+ 
+       var drawnItems = new L.FeatureGroup();
+       map.addLayer(drawnItems);
+ 
+       var drawControl = new L.Control.Draw({
+           edit: { featureGroup: drawnItems },
+           draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
+       });
+       map.addControl(drawControl);
+       
+       
+ 
+       var icons = {
+           "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
+           "nein": L.icon({ iconUrl: "icons/red.png", iconSize: [30, 30] }),
+           "vielleicht": L.icon({ iconUrl: "icons/yellow.png", iconSize: [30, 30] }),
+           "default": L.icon({ iconUrl: "icons/default.png", iconSize: [30, 30] })
+       };
+ 
        map.on(L.Draw.Event.CREATED, function (event) {
            var layer = event.layer;
            drawnItems.addLayer(layer);
@@ -186,16 +116,7 @@
                layer.openPopup();
            }, 100);
        }
-       // 🔐 Logout-Funktion
-       function logout() {
-           sessionStorage.removeItem("userRole");
-           window.location.href = "index.html";
-       }
-
-       // ➕ Weiterleitung zur Registrierungsseite
-       function goToRegister() {
-           window.location.href = "register.html";
-       }
+ 
        function setInterest(address, layerId, interest) {
            var familyName = document.getElementById("familyName") ? document.getElementById("familyName").value : "Unbekannt";
            var layer = drawnItems.getLayer(layerId) || searchMarker;
@@ -471,7 +392,16 @@
  
    </script>
  </body>
+ <button onclick="logout()" style="position: absolute; top: 10px; left: 10px; padding: 10px;">🚪 Logout</button>
+ <button onclick="logout()"
+         style="position: absolute; bottom: 10px; left: 10px; padding: 10px; background-color: red; color: white; border: none; cursor: pointer;">
+     🚪 Logout
+ </button>
+ 
+ 
  </html>
  
+ 
+
  
 
