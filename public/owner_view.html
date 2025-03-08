@@ -23,6 +23,22 @@
   </style>
 </head>
 <body>
+    <h2>Neuen Benutzer hinzufügen</h2>
+    <div style="padding: 10px; background: white; border-radius: 5px; max-width: 400px;">
+        <input type="text" id="newUsername" placeholder="Benutzername">
+        <input type="password" id="newPassword" placeholder="Passwort">
+        <select id="newRole">
+            <option value="sales">Sales</option>
+            <option value="owner">Owner</option>
+        </select>
+        <input type="text" id="firstName" placeholder="Vorname">
+        <input type="text" id="lastName" placeholder="Nachname">
+        <input type="email" id="email" placeholder="E-Mail">
+        <input type="text" id="phone" placeholder="Telefonnummer (optional)">
+        <button onclick="registerUser()">Benutzer anlegen</button>
+        <p id="registerMessage"></p>
+    </div>
+    
   <div id="map"></div>
   <div class="search-container">
     <input id="searchBox" type="text" placeholder="Adresse suchen..." />
@@ -55,6 +71,8 @@
           draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
       });
       map.addControl(drawControl);
+      
+      
 
       var icons = {
           "ja": L.icon({ iconUrl: "icons/green.png", iconSize: [30, 30] }),
@@ -147,6 +165,56 @@
               })
               .catch(error => console.error("❌ Fehler beim Laden der Häuser:", error));
       }
+      
+      // user registrieren
+
+      function registerUser() {
+          const ownerUsername = sessionStorage.getItem("username"); // Owner-Username aus Session holen
+          if (!ownerUsername) {
+              alert("❌ Fehler: Du bist nicht eingeloggt!");
+              return;
+          }
+
+          const newUsername = document.getElementById("newUsername").value.trim();
+          const newPassword = document.getElementById("newPassword").value.trim();
+          const newRole = document.getElementById("newRole").value;
+          const firstName = document.getElementById("firstName").value.trim();
+          const lastName = document.getElementById("lastName").value.trim();
+          const email = document.getElementById("email").value.trim();
+          const phone = document.getElementById("phone").value.trim();
+
+          if (!newUsername || !newPassword || !newRole || !firstName || !lastName || !email) {
+              document.getElementById("registerMessage").innerText = "❌ Alle Felder außer Telefon sind erforderlich.";
+              return;
+          }
+
+          fetch("https://pinks.onrender.com/register", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                  ownerUsername,
+                  newUsername,
+                  password: newPassword,
+                  role: newRole,
+                  first_name: firstName,
+                  last_name: lastName,
+                  email,
+                  phone
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              console.log("📡 Antwort vom Server:", data);
+              document.getElementById("registerMessage").innerText = data.success
+                  ? `✅ Benutzer ${newUsername} erfolgreich angelegt.`
+                  : `❌ Fehler: ${data.error}`;
+          })
+          .catch(error => {
+              console.error("❌ Fehler bei der Registrierung:", error);
+              document.getElementById("registerMessage").innerText = "❌ Serverfehler!";
+          });
+      }
+
       
       
     //Zeichnungen direkt speichern ohne knopf
@@ -324,7 +392,11 @@
 
   </script>
 </body>
-<button onclick="logout()" style="position: absolute; top: 10px; left: 10px; padding: 10px;">🚪 Logout</button>
+<button onclick="logout()"
+        style="position: absolute; bottom: 10px; left: 10px; padding: 10px; background-color: red; color: white; border: none; cursor: pointer;">
+    🚪 Logout
+</button>
+
 
 </html>
 

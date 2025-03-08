@@ -58,26 +58,46 @@ app.post('/login', async (req, res) => {
 });
 
 
-// 📌 **Registrierung (Nur für Owner)**
+// 📌 Benutzer anlegen (Nur für Owner)
 app.post('/register', async (req, res) => {
-    const { username, password, role, first_name, last_name, email, phone } = req.body;
+    const { ownerUsername, newUsername, password, role, first_name, last_name, email, phone } = req.body;
 
-    if (!username || !password || !role || !first_name || !last_name || !email) {
+    console.log(`🔹 Registrierungsversuch durch ${ownerUsername} für ${newUsername}`);
+
+    if (!ownerUsername || !newUsername || !password || !role || !first_name || !last_name || !email) {
         return res.status(400).json({ success: false, error: "Alle Felder außer Telefon sind erforderlich." });
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // 🔍 Überprüfen, ob der anfragende User ein Owner ist
+        const ownerCheck = await pool.query("SELECT * FROM users WHERE username = $1 AND role = 'owner'", [ownerUsername]);
+
+        if (ownerCheck.rowCount === 0) {
+            console.log("❌ Zugriff verweigert! Nur Owner dürfen Benutzer hinzufügen.");
+            return res.status(403).json({ success: false, error: "Nur Owner dürfen Benutzer hinzufügen." });
+        }
+
+        // 🔍 Prüfen, ob der Benutzername bereits existiert
+        const userCheck = await pool.query("SELECT * FROM users WHERE username = $1", [newUsername]);
+
+        if (userCheck.rowCount > 0) {
+            console.log("❌ Benutzername existiert bereits!");
+            return res.status(400).json({ success: false, error: "Benutzername existiert bereits!" });
+        }
+
+        // ✅ Neuen Benutzer anlegen
         await pool.query(`
             INSERT INTO users (username, password, role, first_name, last_name, email, phone) 
             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [username, hashedPassword, role, first_name, last_name, email, phone]);
+            [newUsername, password, role, first_name, last_name, email, phone]
+        );
 
-        console.log(`✅ Benutzer ${username} registriert!`);
-        res.json({ success: true });
+        console.log(`✅ Neuer Benutzer ${newUsername} wurde von ${ownerUsername} erstellt.`);
+        res.json({ success: true, message: `Benutzer ${newUsername} erfolgreich erstellt.` });
+
     } catch (error) {
-        console.error("❌ Fehler bei der Registrierung:", error);
-        res.status(500).json({ success: false, error: error.message });
+        console.error("❌ Fehler beim Erstellen des Benutzers:", error);
+        res.status(500).json({ success: false, error: "Serverfehler" });
     }
 });
 
