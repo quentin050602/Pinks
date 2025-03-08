@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Benutzerregistrierung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .register-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="register-container">
+        <h2>Benutzer registrieren</h2>
+        <input type="text" id="newUsername" placeholder="Benutzername">
+        <input type="password" id="newPassword" placeholder="Passwort">
+        <select id="newRole">
+            <option value="sales">Sales</option>
+            <option value="owner">Owner</option>
+        </select>
+        <input type="text" id="firstName" placeholder="Vorname">
+        <input type="text" id="lastName" placeholder="Nachname">
+        <input type="email" id="email" placeholder="E-Mail">
+        <input type="text" id="phone" placeholder="Telefonnummer (optional)">
+        <button onclick="registerUser()">Benutzer anlegen</button>
+        <p id="registerMessage"></p>
+        <a href="owner_view.html">⬅️ Zurück</a>
+    </div>
+
+    <script>
+        function registerUser() {
+            const ownerUsername = sessionStorage.getItem("username"); // Owner-Username aus Session holen
+            if (!ownerUsername) {
+                alert("❌ Fehler: Du bist nicht eingeloggt!");
+                return;
+            }
+
+            const newUsername = document.getElementById("newUsername").value.trim();
+            const newPassword = document.getElementById("newPassword").value.trim();
+            const newRole = document.getElementById("newRole").value;
+            const firstName = document.getElementById("firstName").value.trim();
+            const lastName = document.getElementById("lastName").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const phone = document.getElementById("phone").value.trim();
+
+            if (!newUsername || !newPassword || !newRole || !firstName || !lastName || !email) {
+                document.getElementById("registerMessage").innerText = "❌ Alle Felder außer Telefon sind erforderlich.";
+                return;
+            }
+
+            fetch("https://pinks.onrender.com/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ownerUsername,
+                    newUsername,
+                    password: newPassword,
+                    role: newRole,
+                    first_name: firstName,
+                    last_name: lastName,
+                    email,
+                    phone
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("📡 Antwort vom Server:", data);
+                document.getElementById("registerMessage").innerText = data.success
+                    ? `✅ Benutzer ${newUsername} erfolgreich angelegt.`
+                    : `❌ Fehler: ${data.error}`;
+            })
+            .catch(error => {
+                console.error("❌ Fehler bei der Registrierung:", error);
+                document.getElementById("registerMessage").innerText = "❌ Serverfehler!";
+            });
+        }
+    </script>
+
+</body>
+</html>
+
+
+
+
+
