@@ -23,7 +23,7 @@
    </style>
  </head>
  <body>
-
+     <button onclick="window.location.href='register.html'" style="padding: 10px; background: blue; color: white; border: none; cursor: pointer;">➕ Neuen Benutzer hinzufügen</button>
      
    <div id="map"></div>
    <div class="search-container">
@@ -46,9 +46,24 @@
  
        const BACKEND_URL = "https://pinks.onrender.com";
  
-       var map = L.map('map').setView([26.1224, -80.1373], 13);
-       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+ var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' });
+ var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri' });
  
+ 
+ var currentLayer = streetLayer;
+ streetLayer.addTo(map);
+ 
+ function toggleMapLayer() {
+     if (map.hasLayer(streetLayer)) {
+         map.removeLayer(streetLayer);
+         map.addLayer(satelliteLayer);
+         currentLayer = satelliteLayer;
+     } else {
+         map.removeLayer(satelliteLayer);
+         map.addLayer(streetLayer);
+         currentLayer = streetLayer;
+     }
+ }
        var drawnItems = new L.FeatureGroup();
        map.addLayer(drawnItems);
  
