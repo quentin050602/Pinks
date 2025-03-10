@@ -10,16 +10,40 @@
    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
    <style>
-     #map { height: 100vh; width: 100%; }
-     .search-container {
-       position: absolute;
-       top: 10px;
-       right: 10px;
-       z-index: 1000;
-       background: white;
-       padding: 5px;
-       border-radius: 5px;
-     }
+       /* 🗺️ Stil für die Karte */
+          #map-container {
+              display: flex;
+              justify-content: center;
+              margin-top: 20px;
+          }
+          #map {
+              width: 80%;
+              height: 70vh;
+              border: 2px solid #ccc;
+              border-radius: 10px;
+              overflow: hidden;
+          }
+
+          /* 🔘 Stil für die Button-Leiste */
+          .filter-buttons {
+              display: flex;
+              justify-content: center;
+              gap: 10px;
+              margin-top: 15px;
+              padding: 10px;
+          }
+          .filter-buttons button {
+              padding: 10px 15px;
+              border: none;
+              background: #007bff;
+              color: white;
+              cursor: pointer;
+              border-radius: 5px;
+              font-size: 16px;
+          }
+          .filter-buttons button:hover {
+              background: #0056b3;
+          }
    </style>
  </head>
  <body>
@@ -29,14 +53,29 @@
      </button>
 
      
+     <!-- 🌍 Karte -->
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+
+        
     
-     <!-- Container für die Karte -->
-     <div style="display: flex; justify-content: center; margin-top: 20px;">
-         <div id="map-container"
-              style="width: 80%; height: 80vh; border: 2px solid #ccc; border-radius: 10px; overflow: hidden;">
-             <div id="map" style="width: 100%; height: 100%;"></div>
-         </div>
-     </div>
+    <div class="search-container">
+      <input id="searchBox" type="text" placeholder="Adresse suchen..." />
+      <button onclick="searchAddress()">🔍</button>
+    </div>
+        
+        
+        <!-- 🔘 Buttons unter der Karte -->
+        <div class="filter-buttons">
+            <button onclick="toggleCategory('restaurant')">🍽️ Restaurants</button>
+            <button onclick="toggleCategory('cafe')">☕ Cafés</button>
+            <button onclick="toggleCategory('shop')">🛍️ Shops</button>
+            <button onclick="toggleCategory('car_dealer')">🚗 Autohäuser</button>
+            <button onclick="toggleCategory('fitness')">Gyms</button>
+            <button onclick="window.location.href='register.html'">➕ Neuen Benutzer hinzufügen</button>
+        </div>
+
 
 
    <div class="search-container">
@@ -75,7 +114,58 @@
        streetLayer.addTo(map); // Standardmäßig Straßenkarte setzen
 
        L.control.layers(baseMaps).addTo(map); // 🟢 Schaltfläche für Layer-Umschaltung hinzufügen
+       
+       
+       // 🔵 Kategorie-Marker speichern
+       var categoryLayers = {
+           restaurant: L.layerGroup().addTo(map),
+           cafe: L.layerGroup().addTo(map),
+           shop: L.layerGroup().addTo(map),
+           car_dealer: L.layerGroup().addTo(map),
+           fitness: L.layerGroup().addTo(map)
+       };
+       
+       // 🏪 Kategorien & Overpass API Tags
+        var categories = {
+            restaurant: '[out:json];node["amenity"="restaurant"](26.0500,-80.2500,26.2500,-80.1000);out body;',
+            cafe: '[out:json];node["amenity"="cafe"](26.0500,-80.2500,26.2500,-80.1000);out body;',
+            shop: '[out:json];node["shop"](26.0500,-80.2500,26.2500,-80.1000);out body;',
+            fitness: '[out:json];node["leisure"="fitness_centre"](26.0500,-80.2500,26.2500,-80.1000);out body;',
+            car_dealer: '[out:json];node["shop"="car"](26.0500,-80.2500,26.2500,-80.1000);out body;'
+              };
+       
+       // 🔄 Laden und Entfernen von Kategorien
+             function toggleCategory(category) {
+                 if (map.hasLayer(categoryLayers[category])) {
+                     map.removeLayer(categoryLayers[category]);
+                     categoryLayers[category].clearLayers();
+                     console.log(`❌ ${category} entfernt`);
+                 } else {
+                     loadCategory(category);
+                     map.addLayer(categoryLayers[category]);
+                     console.log(`✅ ${category} hinzugefügt`);
+                 }
+             }
  
+ 
+ 
+ // 📡 Läd Orte aus OSM und fügt sie zur Karte hinzu
+ function loadCategory(category) {
+     fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(categories[category]))
+         .then(response => response.json())
+         .then(data => {
+             data.elements.forEach(element => {
+                 if (element.lat && element.lon) {
+                     var marker = L.marker([element.lat, element.lon]).bindPopup(`
+                         <b>${element.tags.name || "Unbekanntes Geschäft"}</b><br>
+                         ${element.tags.shop || element.tags.cuisine || "Kategorie nicht angegeben"}
+                     `);
+                     categoryLayers[category].addLayer(marker);
+                 }
+             });
+         })
+         .catch(error => console.error(`❌ Fehler beim Laden von ${category}:`, error));
+ }
  // Zeichenwerkzeug
  
        var drawnItems = new L.FeatureGroup();
