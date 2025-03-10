@@ -51,7 +51,13 @@
                     position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);">
          ➕ Neuen Benutzer hinzufügen
      </button>
+     
+     
 
+     <div class="search-container">
+       <input id="searchBox" type="text" placeholder="Adresse suchen..." />
+       <button onclick="searchAddress()">🔍</button>
+     </div>
      
      <!-- 🌍 Karte -->
         <div id="map-container">
@@ -59,11 +65,6 @@
         </div>
 
         
-    
-    <div class="search-container">
-      <input id="searchBox" type="text" placeholder="Adresse suchen..." />
-      <button onclick="searchAddress()">🔍</button>
-    </div>
         
         
         <!-- 🔘 Buttons unter der Karte -->
@@ -77,12 +78,6 @@
         </div>
 
 
-
-   <div class="search-container">
-     <input id="searchBox" type="text" placeholder="Adresse suchen..." />
-     <button onclick="searchAddress()">🔍</button>
-   </div>
- 
  
    <script>
        // 🔐 Überprüfen, ob der User eingeloggt ist
