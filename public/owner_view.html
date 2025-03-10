@@ -23,14 +23,20 @@
    </style>
  </head>
  <body>
-     <button onclick="window.location.href='register.html'"
-             style="padding: 10px; background: blue; color: white; border: none; cursor: pointer; 
-                    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);">
+     <button onclick="window.location.href='register.html'" style="padding: 10px; background: blue; color: white; border: none; cursor: pointer; 
+                    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);">
          ➕ Neuen Benutzer hinzufügen
      </button>
 
      
-   <div id="map"></div>
+     <!-- Container für die Karte mit Rahmen -->
+     <div style="display: flex; justify-content: center; margin-top: 20px;">
+         <div id="map-container"
+              style="width: 70%; height: 80vh; border: 2px solid #ccc; border-radius: 10px; overflow: hidden;">
+             <div id="map" style="width: 100%; height: 100%;"></div>
+         </div>
+     </div>
+
    <div class="search-container">
      <input id="searchBox" type="text" placeholder="Adresse suchen..." />
      <button onclick="searchAddress()">🔍</button>
@@ -401,7 +407,12 @@
  
    </script>
  </body>
- <button onclick="logout()" style="position: absolute; top: 10px; left: 10px; padding: 10px;">🚪 Logout</button>
+ <button onclick="logout()"
+         style="position: fixed; top: 10px; left: 10px;
+                padding: 10px; background-color: red; color: white; border: none; cursor: pointer; z-index: 1000;">
+     🚪 Logout
+ </button>
+
  </html>
  
  
