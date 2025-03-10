@@ -24,18 +24,20 @@
  </head>
  <body>
      <button onclick="window.location.href='register.html'" style="padding: 10px; background: blue; color: white; border: none; cursor: pointer; 
-                    position: fixed; top: 30px; left: 10px;>
+                    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);">
          ➕ Neuen Benutzer hinzufügen
      </button>
 
      
-     <!-- Container für die Karte mit Rahmen -->
-     <div style="display: flex; justify-content: center; margin-top: 50px;">
+    
+     <!-- Container für die Karte -->
+     <div style="display: flex; justify-content: center; margin-top: 20px;">
          <div id="map-container"
-              style="width: 80%; height: 80vh; border: 2px solid #ccc; border-radius: 10px; overflow: hidden;">
+              style="width: 70%; height: 500px; border: 2px solid #ccc; border-radius: 10px; overflow: hidden;">
              <div id="map" style="width: 100%; height: 100%;"></div>
          </div>
      </div>
+
 
    <div class="search-container">
      <input id="searchBox" type="text" placeholder="Adresse suchen..." />
