@@ -10,74 +10,104 @@
    <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
    <style>
-       /* 🗺️ Stil für die Karte */
-          #map-container {
-              display: flex;
-              justify-content: center;
-              margin-top: 20px;
-          }
-          #map {
-              width: 80%;
-              height: 70vh;
-              border: 2px solid #ccc;
-              border-radius: 10px;
-              overflow: hidden;
-          }
-
-          /* 🔘 Stil für die Button-Leiste */
-          .filter-buttons {
-              display: flex;
-              justify-content: center;
-              gap: 10px;
-              margin-top: 15px;
-              padding: 10px;
-          }
-          .filter-buttons button {
-              padding: 10px 15px;
-              border: none;
-              background: #007bff;
-              color: white;
-              cursor: pointer;
-              border-radius: 5px;
-              font-size: 16px;
-          }
-          .filter-buttons button:hover {
-              background: #0056b3;
-          }
+       #map-container {
+           width: 90%;
+           height: 70vh;
+           border: 2px solid #ccc;
+           border-radius: 10px;
+           overflow: hidden;
+           margin: auto;
+       }
+       #map {
+           width: 100%;
+           height: 100%;
+       }
+       #controls {
+           text-align: center;
+           margin-top: 10px;
+       }
+       .search-container {
+           position: fixed;
+           top: 10px;
+           right: 10px;
+           background: white;
+           padding: 5px;
+           border-radius: 5px;
+           box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+           z-index: 1000;
+       }
+       .dropdown {
+           position: relative;
+           display: inline-block;
+       }
+       .dropdown-content {
+           display: none;
+           position: absolute;
+           background-color: white;
+           min-width: 200px;
+           box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+           padding: 10px;
+           z-index: 1000;
+           text-align: left;
+       }
+       .dropdown:hover .dropdown-content {
+           display: block;
+       }
+       .dropdown button {
+           width: 100%;
+           margin: 5px 0;
+           padding: 8px;
+           background-color: #007BFF;
+           color: white;
+           border: none;
+           cursor: pointer;
+           border-radius: 5px;
+       }
+       .dropdown button:hover {
+           background-color: #0056b3;
+       }
    </style>
  </head>
  <body>
+     
+     <!-- register button-->
+     
      <button onclick="window.location.href='register.html'" style="padding: 10px; background: blue; color: white; border: none; cursor: pointer; 
                     position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);">
          ➕ Neuen Benutzer hinzufügen
      </button>
      
      
-
+     <!--suchleiste-->
+    
      <div class="search-container">
-       <input id="searchBox" type="text" placeholder="Adresse suchen..." />
-       <button onclick="searchAddress()">🔍</button>
+         <input id="searchBox" type="text" placeholder="Adresse suchen..." />
+         <button onclick="searchAddress()">🔍</button>
      </div>
      
-     <!-- 🌍 Karte -->
-        <div id="map-container">
-            <div id="map"></div>
-        </div>
-
-        
-        
-        
-        <!-- 🔘 Buttons unter der Karte -->
-        <div class="filter-buttons">
-            <button onclick="toggleCategory('restaurant')">🍽️ Restaurants</button>
-            <button onclick="toggleCategory('cafe')">☕ Cafés</button>
-            <button onclick="toggleCategory('shop')">🛍️ Shops</button>
-            <button onclick="toggleCategory('car_dealer')">🚗 Autohäuser</button>
-            <button onclick="toggleCategory('fitness')">Gyms</button>
-            <button onclick="window.location.href='register.html'">➕ Neuen Benutzer hinzufügen</button>
-        </div>
-
-
+     <!-- Karten container-->
+     
+     <div id="map-container">
+         <div id="map"></div>
+     </div>
+     
+     
+     <div id="controls">
+         <div class="dropdown">
+             <button id="dropdown-btn">📍 POI & Häuser anzeigen</button>
+             <div id="dropdown-content" class="dropdown-content">
+                 <button onclick="loadPOIs('restaurant')">🍽️ Restaurants</button>
+                 <button onclick="loadPOIs('cafe')">☕ Cafés</button>
+                 <button onclick="loadPOIs('shop')">🛍️ Shops</button>
+                 <button onclick="loadPOIs('car')">🚗 Autohäuser</button>
+                 <hr>
+                 <button onclick="filterHouses('ja')">✅ Interessierte Häuser</button>
+                 <button onclick="filterHouses('vielleicht')">❔ Vielleicht interessiert</button>
+                 <button onclick="filterHouses('nein')">❌ Nicht interessiert</button>
+             </div>
+         </div>
+     </div>
+    
  
    <script>
        // 🔐 Überprüfen, ob der User eingeloggt ist
@@ -90,6 +120,7 @@
            sessionStorage.removeItem("userRole");
            window.location.href = "index.html";
        }
+       
  // Backend verbindung
        const BACKEND_URL = "https://pinks.onrender.com";
        
@@ -120,6 +151,37 @@
            fitness: L.layerGroup().addTo(map)
        };
        
+       
+       function loadPOIs(type) {
+             fetch(`https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="${type}"](26.05,-80.25,26.2,-80.1);out;`)
+                 .then(response => response.json())
+                 .then(data => {
+                     data.elements.forEach(element => {
+                         if (element.lat && element.lon) {
+                             L.marker([element.lat, element.lon]).addTo(map)
+                                 .bindPopup(`<strong>${element.tags.name || "Unbekanntes ${type}"}</strong>`);
+                         }
+                     });
+                 })
+                 .catch(error => console.error(`Fehler beim Laden von ${type}:`, error));
+         }
+         
+         function filterHouses(interest) {
+             fetch(`${BACKEND_URL}/get-houses`)
+                 .then(response => response.json())
+                 .then(data => {
+                     data.forEach(house => {
+                         if (house.interest === interest) {
+                             L.marker([house.lat, house.lon]).addTo(map)
+                                 .bindPopup(`<p><strong>Familie ${house.family_name || "Unbekannt"}</strong></p>
+                                             <p>${house.full_address || "Adresse nicht gefunden"}</p>
+                                             <p>Interesse: ${house.interest}</p>`);
+                         }
+                     });
+                 })
+                 .catch(error => console.error("Fehler beim Filtern der Häuser:", error));
+         }
+
        // 🏪 Kategorien & Overpass API Tags
         var categories = {
             restaurant: '[out:json];node["amenity"="restaurant"](26.0500,-80.2500,26.2500,-80.1000);out body;',
@@ -141,7 +203,6 @@
                      console.log(`✅ ${category} hinzugefügt`);
                  }
              }
- 
  
  
  // 📡 Läd Orte aus OSM und fügt sie zur Karte hinzu
