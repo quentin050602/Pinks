@@ -254,20 +254,26 @@
        
        
        
-   
-           // Funktion, um eine zufällige Farbe zu generieren
-           function getRandomColor() {
-               return "#" + Math.floor(Math.random()*16777215).toString(16);
-           }
+       // ZIP-Code-Farben zwischenspeichern, damit sie stabil bleiben
+       let zipColors = {};
 
-           // Laden der ZIP-Code-GeoJSON-Datei
-           fetch('data/fort_lauderdale_zipcodes.geojson')
+       // Funktion, um eine zufällige Farbe zu generieren und sie pro ZIP-Code zu speichern
+       function getRandomColor(zip) {
+           if (!zipColors[zip]) {
+               zipColors[zip] = "#" + Math.floor(Math.random() * 16777215).toString(16);
+           }
+           return zipColors[zip];
+       }
+
+       // Laden der ZIP-Code-GeoJSON-Datei
+       function loadZipCodes() {
+           fetch("/mnt/data/fort_lauderdale_zipcodes.geojson")
                .then(response => response.json())
                .then(data => {
                    L.geoJSON(data, {
-                       style: function () {
+                       style: function (feature) {
                            return {
-                               color: getRandomColor(), // Setzt eine zufällige Farbe für jeden Bereich
+                               color: getRandomColor(feature.properties.ZCTA5CE10), // Stabile zufällige Farbe für jeden ZIP-Code
                                weight: 2,
                                opacity: 0.6,
                                fillOpacity: 0.4
@@ -279,11 +285,14 @@
                            }
                        }
                    }).addTo(map);
+                   console.log("✅ ZIP-Code-Grenzen erfolgreich geladen!");
                })
-               .catch(error => console.error("Fehler beim Laden der ZIP-Code-Daten:", error));
+               .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
+       }
 
-       
+       // ZIP-Codes direkt nach dem Laden anzeigen
        loadZipCodes();
+
 
 
  // Zeichenwerkzeug
