@@ -256,7 +256,7 @@
        
        // Funktion zum Laden von ZIP-Code-Grenzen aus einer externen GeoJSON-Datei
        function loadZipCodes() {
-           fetch("https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/florida_zip_codes_geo.min.json") // 🔥 Ersetze mit passender URL für Fort Lauderdale
+           fetch("https://catalog.data.gov/dataset/tiger-line-shapefile-2019-nation-u-s-5-digit-zip-code-tabulation-areas") // 🔥 Ersetze mit passender URL für Fort Lauderdale
                .then(response => response.json())
                .then(data => {
                    // Filter für ZIP-Codes in Fort Lauderdale (26xxx)
