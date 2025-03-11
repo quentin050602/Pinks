@@ -256,41 +256,26 @@
        
        // Funktion zum Laden von ZIP-Code-Grenzen aus einer externen GeoJSON-Datei
        function loadZipCodes() {
-           fetch("https://catalog.data.gov/dataset/tiger-line-shapefile-2019-nation-u-s-5-digit-zip-code-tabulation-areas") // 🔥 Ersetze mit passender URL für Fort Lauderdale
+           fetch('data/fort_lauderdale_zipcodes.geojson')
                .then(response => response.json())
                .then(data => {
-                   // Filter für ZIP-Codes in Fort Lauderdale (26xxx)
-                   let filteredZipCodes = {
-                       type: "FeatureCollection",
-                       features: data.features.filter(feature => feature.properties.ZCTA5CE10.startsWith("333"))
-                   };
-
-                   L.geoJSON(filteredZipCodes, {
-                       style: function (feature) {
-                           return {
-                               color: "#ff7800", // Randfarbe der ZIP-Codes
-                               weight: 2,
-                               opacity: 1,
-                               fillColor: getRandomColor(), // Zufällige Füllfarbe für bessere Sichtbarkeit
-                               fillOpacity: 0.3
-                           };
+                   L.geoJSON(data, {
+                       style: {
+                           color: "#ff7800",
+                           weight: 2,
+                           opacity: 0.65
                        },
                        onEachFeature: function (feature, layer) {
                            if (feature.properties && feature.properties.ZCTA5CE10) {
-                               layer.bindPopup(`<b>ZIP-Code:</b> ${feature.properties.ZCTA5CE10}`);
+                               layer.bindPopup("ZIP Code: " + feature.properties.ZCTA5CE10);
                            }
                        }
                    }).addTo(map);
+                   console.log("✅ ZIP-Code-Grenzen erfolgreich geladen!");
                })
-               .catch(error => console.error("Fehler beim Laden der ZIP-Code-Daten:", error));
+               .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
        }
-
-       // Funktion für zufällige Farben zur besseren Trennung der ZIP-Code-Gebiete
-       function getRandomColor() {
-           return "#" + Math.floor(Math.random() * 16777215).toString(16);
-       }
-
-       // ZIP-Code-Layer direkt beim Laden der Karte aktivieren
+       
        loadZipCodes();
 
 
