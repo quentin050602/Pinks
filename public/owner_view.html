@@ -267,7 +267,7 @@
 
        // Laden der ZIP-Code-GeoJSON-Datei
        function loadZipCodes() {
-           fetch("/mnt/data/fort_lauderdale_zipcodes.geojson")
+           fetch('data/fort_lauderdale_zipcodes.geojson')
                .then(response => response.json())
                .then(data => {
                    L.geoJSON(data, {
