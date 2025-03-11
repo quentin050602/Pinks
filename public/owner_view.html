@@ -254,27 +254,34 @@
        
        
        
-       // Funktion zum Laden von ZIP-Code-Grenzen aus einer externen GeoJSON-Datei
-       function loadZipCodes() {
+   
+           // Funktion, um eine zufällige Farbe zu generieren
+           function getRandomColor() {
+               return "#" + Math.floor(Math.random()*16777215).toString(16);
+           }
+
+           // Laden der ZIP-Code-GeoJSON-Datei
            fetch('data/fort_lauderdale_zipcodes.geojson')
                .then(response => response.json())
                .then(data => {
                    L.geoJSON(data, {
-                       style: {
-                           color: "#ff7800",
-                           weight: 2,
-                           opacity: 0.65
+                       style: function () {
+                           return {
+                               color: getRandomColor(), // Setzt eine zufällige Farbe für jeden Bereich
+                               weight: 2,
+                               opacity: 0.6,
+                               fillOpacity: 0.4
+                           };
                        },
                        onEachFeature: function (feature, layer) {
                            if (feature.properties && feature.properties.ZCTA5CE10) {
-                               layer.bindPopup("ZIP Code: " + feature.properties.ZCTA5CE10);
+                               layer.bindPopup("ZIP-Code: " + feature.properties.ZCTA5CE10);
                            }
                        }
                    }).addTo(map);
-                   console.log("✅ ZIP-Code-Grenzen erfolgreich geladen!");
                })
-               .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
-       }
+               .catch(error => console.error("Fehler beim Laden der ZIP-Code-Daten:", error));
+
        
        loadZipCodes();
 
