@@ -96,14 +96,17 @@
          <div class="dropdown">
              <button id="dropdown-btn">📍 POI & Häuser anzeigen</button>
              <div id="dropdown-content" class="dropdown-content">
-                 <button onclick="loadPOIs('restaurant')">🍽️ Restaurants</button>
-                 <button onclick="loadPOIs('cafe')">☕ Cafés</button>
-                 <button onclick="loadPOIs('shop')">🛍️ Shops</button>
-                 <button onclick="loadPOIs('car')">🚗 Autohäuser</button>
+                 <label><input type="checkbox" id="chk-restaurant" onclick="toggleCategory('restaurant')"> 🍽️ Restaurants</label>
+                 <label><input type="checkbox" id="chk-cafe" onclick="toggleCategory('cafe')"> ☕ Cafés</label>
+                 <label><input type="checkbox" id="chk-shop" onclick="toggleCategory('shop')"> 🛍️ Shops</label>
+                 <label><input type="checkbox" id="chk-car_dealer" onclick="toggleCategory('car_dealer')"> 🚗 Autohäuser</label>
+                 <label><input type="checkbox" id="chk-fitness" onclick="toggleCategory('fitness')"> 🏋️ Fitnessstudios</label>
+                 
                  <hr>
-                 <button onclick="filterHouses('ja')">✅ Interessierte Häuser</button>
-                 <button onclick="filterHouses('vielleicht')">❔ Vielleicht interessiert</button>
-                 <button onclick="filterHouses('nein')">❌ Nicht interessiert</button>
+                 
+                 <label><input type="checkbox" id="chk-house-ja" onclick="toggleHouseFilter('ja')"> ✅ Interessierte Häuser</label>
+                 <label><input type="checkbox" id="chk-house-vielleicht" onclick="toggleHouseFilter('vielleicht')"> ❔ Vielleicht interessiert</label>
+                 <label><input type="checkbox" id="chk-house-nein" onclick="toggleHouseFilter('nein')"> ❌ Nicht interessiert</label>
              </div>
          </div>
      </div>
@@ -141,7 +144,8 @@
 
        L.control.layers(baseMaps).addTo(map); // 🟢 Schaltfläche für Layer-Umschaltung hinzufügen
        
-       
+       loadHouses();
+       loadDrawings();
        // 🔵 Kategorie-Marker speichern
        var categoryLayers = {
            restaurant: L.layerGroup().addTo(map),
@@ -183,26 +187,49 @@
          }
 
        // 🏪 Kategorien & Overpass API Tags
-        var categories = {
-            restaurant: '[out:json];node["amenity"="restaurant"](26.0500,-80.2500,26.2500,-80.1000);out body;',
-            cafe: '[out:json];node["amenity"="cafe"](26.0500,-80.2500,26.2500,-80.1000);out body;',
-            shop: '[out:json];node["shop"](26.0500,-80.2500,26.2500,-80.1000);out body;',
-            fitness: '[out:json];node["leisure"="fitness_centre"](26.0500,-80.2500,26.2500,-80.1000);out body;',
-            car_dealer: '[out:json];node["shop"="car"](26.0500,-80.2500,26.2500,-80.1000);out body;'
-              };
-       
+       var categories = {
+           restaurant: '[out:json];nwr["amenity"="restaurant"](26.0500,-80.2500,26.2500,-80.1000);out center;',
+           cafe: '[out:json];nwr["amenity"="cafe"](26.0500,-80.2500,26.2500,-80.1000);out center;',
+           shop: '[out:json];nwr["shop"](26.0500,-80.2500,26.2500,-80.1000);out center;',
+           fitness: '[out:json];nwr["leisure"="fitness_centre"](26.0500,-80.2500,26.2500,-80.1000);out center;',
+           car_dealer: '[out:json];nwr["shop"="car"](26.0500,-80.2500,26.2500,-80.1000);out center;'
+       };
+
        // 🔄 Laden und Entfernen von Kategorien
-             function toggleCategory(category) {
-                 if (map.hasLayer(categoryLayers[category])) {
-                     map.removeLayer(categoryLayers[category]);
-                     categoryLayers[category].clearLayers();
-                     console.log(`❌ ${category} entfernt`);
-                 } else {
-                     loadCategory(category);
-                     map.addLayer(categoryLayers[category]);
-                     console.log(`✅ ${category} hinzugefügt`);
-                 }
-             }
+       function toggleCategory(category) {
+           let checkbox = document.getElementById(`chk-${category}`);
+
+           if (checkbox.checked) {
+               loadCategory(category);
+               map.addLayer(categoryLayers[category]);
+               console.log(`✅ ${category} hinzugefügt`);
+           } else {
+               map.removeLayer(categoryLayers[category]);
+               categoryLayers[category].clearLayers();
+               console.log(`❌ ${category} entfernt`);
+           }
+       }
+
+       
+       
+       function toggleHouseFilter(interest) {
+           let checkbox = document.getElementById(`chk-house-${interest}`);
+
+           if (checkbox.checked) {
+               filterHouses(interest); // Lade Häuser mit dieser Interesse-Kategorie
+               console.log(`✅ Häuser mit Interesse "${interest}" hinzugefügt`);
+           } else {
+               // Entferne alle Marker, die zu dieser Kategorie gehören
+               drawnItems.eachLayer(layer => {
+                   let popupContent = layer.getPopup()?.getContent();
+                   if (popupContent && popupContent.includes(`Interesse: ${interest}`)) {
+                       drawnItems.removeLayer(layer);
+                   }
+               });
+               console.log(`❌ Häuser mit Interesse "${interest}" entfernt`);
+           }
+       }
+
  
  
  // 📡 Läd Orte aus OSM und fügt sie zur Karte hinzu
@@ -550,8 +577,6 @@
        }
  
  
-       loadHouses();
-       loadDrawings();
  
    </script>
  </body>
