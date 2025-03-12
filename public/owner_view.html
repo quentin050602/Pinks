@@ -265,7 +265,8 @@
        
        // 🔵 ZIP-Code Layer für Grenzen & Markierungen
        let zipLayer = L.layerGroup();
-       let zipColors = {}; // Farben für stabile ZIP-Code-Anzeige
+       let zipColors = {}; // Speichert Farben für jeden ZIP-Code
+       let zipDataLoaded = false; // Kontrollvariable
 
        // ✅ Funktion für stabile, zufällige Farbe pro ZIP-Code
        function getRandomColor(zip) {
@@ -275,19 +276,30 @@
            return zipColors[zip];
        }
 
-       
-       let zipDataLoaded = false; // Variable zur Kontrolle
-       // 📌 ZIP-Codes laden & anzeigen (Grenzen + Marker)
+       // ✅ Berechne Mittelpunkt (Centroid) eines ZIP-Codes
+       function getCentroid(coords) {
+           let sumX = 0, sumY = 0, count = 0;
+           coords[0].forEach(point => {
+               sumX += point[0];
+               sumY += point[1];
+               count++;
+           });
+           return [sumY / count, sumX / count]; // Reihenfolge [Lat, Lng]
+       }
+
+       // ✅ Lade ZIP-Code-Grenzen & Marker
        function loadZipCodes() {
            if (zipDataLoaded) return; // Falls schon geladen, nicht erneut abrufen
-           
+           zipDataLoaded = true; // Setze auf true, damit es nur einmal geladen wird
+
            fetch('data/fort_lauderdale_zipcodes.geojson')
                .then(response => response.json())
                .then(geoData => {
                    let zipBoundaries = L.geoJSON(geoData, {
                        style: function (feature) {
+                           let zipCode = feature.properties.ZCTA5CE10; // ZIP-Code aus GeoJSON
                            return {
-                               color: getRandomColor(feature.properties.ZCTA5CE10),
+                               color: getRandomColor(zipCode), // 🎨 Jedem ZIP-Code eine eigene Farbe geben
                                weight: 2,
                                opacity: 0.6,
                                fillOpacity: 0.4
@@ -297,11 +309,21 @@
 
                    zipLayer.addLayer(zipBoundaries);
 
-                   // 🔍 ZIP-Code Markierungen abrufen
+                   // 🔍 Hole ZIP-Code-Daten aus der Datenbank
                    fetch("https://pinks.onrender.com/get-zipcodes")
                        .then(response => response.json())
                        .then(zipData => {
-                           zipData.forEach(zip => {
+                           geoData.features.forEach(feature => {
+                               let zipCode = feature.properties.ZCTA5CE10;
+                               let centroid = getCentroid(feature.geometry.coordinates);
+
+                               // Finde die passenden Daten aus der DB
+                               let zipInfo = zipData.find(zip => zip.zip == zipCode);
+                               if (!zipInfo) {
+                                   console.warn(`⚠️ Keine DB-Daten für ZIP-Code ${zipCode}`);
+                                   return;
+                               }
+
                                var icon = L.icon({
                                    iconUrl: "icons/zip.png",
                                    iconSize: [30, 30],
@@ -309,13 +331,13 @@
                                    popupAnchor: [0, -30]
                                });
 
-                               let marker = L.marker([zip.latitude, zip.longitude], { icon: icon })
+                               let marker = L.marker(centroid, { icon: icon })
                                    .bindPopup(`
-                                       <b>ZIP-Code: ${zip.zipcode}</b><br>
-                                       🏡 Population: ${zip.population}<br>
-                                       🏠 Gesamt-Häuser: ${zip.homes}<br>
-                                       ✅ Ideale Häuser: ${zip.ideal_homes}<br>
-                                       📏 Fläche: ${zip.sq_miles} sq miles
+                                       <b>ZIP-Code: ${zipCode}</b><br>
+                                       🏡 Population: ${zipInfo.population}<br>
+                                       🏠 Gesamt-Häuser: ${zipInfo.homes}<br>
+                                       ✅ Ideale Häuser: ${zipInfo.ideal_homes}<br>
+                                       📏 Fläche: ${zipInfo.sq_miles} sq miles
                                    `);
 
                                zipLayer.addLayer(marker);
@@ -323,8 +345,7 @@
 
                            console.log("✅ ZIP-Codes & Markierungen erfolgreich geladen!");
                        })
-                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten aus der Datenbank:", error));
-
+                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten aus der DB:", error));
                })
                .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Grenzen:", error));
        }
@@ -337,7 +358,7 @@
                    map.addLayer(zipLayer);
                } else {
                    zipLayer.clearLayers(); // Alle ZIP-Code-Grenzen & Markierungen löschen
-                    map.removeLayer(zipLayer);
+                   map.removeLayer(zipLayer);
                }
            });
        });
