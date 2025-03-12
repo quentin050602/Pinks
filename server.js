@@ -99,20 +99,18 @@ app.post('/register', async (req, res) => {
 });
 
 
-// 📌 ZIP-Code-Daten abrufen
+
+// 📌 ZIP-Code-Daten aus der DB abrufen
 app.get('/get-zipcodes', async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT zipcode, latitude, longitude, population, median_income, housing_units 
-            FROM zipcodes
-        `);
-
+        const result = await pool.query('SELECT * FROM zipcodes');
         res.json(result.rows);
     } catch (error) {
         console.error("❌ Fehler beim Abrufen der ZIP-Code-Daten:", error);
-        res.status(500).json({ success: false, error: "Fehler beim Abrufen der ZIP-Code-Daten" });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
+
 
 
 

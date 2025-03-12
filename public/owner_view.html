@@ -107,12 +107,7 @@
                  <label><input type="checkbox" id="chk-house-ja" onclick="toggleHouseFilter('ja')"> ✅ Interessierte Häuser</label>
                  <label><input type="checkbox" id="chk-house-vielleicht" onclick="toggleHouseFilter('vielleicht')"> ❔ Vielleicht interessiert</label>
                  <label><input type="checkbox" id="chk-house-nein" onclick="toggleHouseFilter('nein')"> ❌ Nicht interessiert</label>
-                 
-                 <hr>
-                 
-                 <label><input type="checkbox" id="chk-zipcodes"> 📍 ZIP-Code Markierungen</label>
-
-                    
+             
              </div>
          </div>
      </div>
@@ -271,83 +266,91 @@
            return zipColors[zip];
        }
 
-       // 📌 Layer für ZIP-Code-Polygone und Markierungen
-       var zipCodeLayer = L.layerGroup();
-       var zipCodeMarkers = L.layerGroup();
+       let zipLayer = L.layerGroup(); // Layer für ZIP-Code-Grenzen & Marker
 
-       // 📌 ZIP-Code-Grenzen laden
-       function loadZipCodes() {
-           fetch('data/fort_lauderdale_zipcodes.geojson')
-               .then(response => response.json())
-               .then(data => {
-                   zipCodeLayer.clearLayers();
-                   zipCodeMarkers.clearLayers();
-
-                   data.features.forEach(feature => {
-                       let zip = feature.properties.ZCTA5CE10;
-                       let color = getRandomColor(zip);
-
-                       let polygon = L.geoJSON(feature, {
-                           style: {
-                               color: color,
-                               weight: 2,
-                               opacity: 0.6,
-                               fillOpacity: 0.4
-                           }
-                       });
-
-                       let center = polygon.getBounds().getCenter(); // Mittelpunkt berechnen
-
-                       let icon = L.icon({
-                           iconUrl: "icons/zip.png",
-                           iconSize: [30, 30],
-                           iconAnchor: [15, 30],
-                           popupAnchor: [0, -30]
-                       });
-
-                       let marker = L.marker([center.lat, center.lng], { icon: icon })
-                           .on("click", function() {
-                               fetch(`https://pinks.onrender.com/get-zipcode/${zip}`)
-                                   .then(response => response.json())
-                                   .then(data => {
-                                       marker.bindPopup(`
-                                           <b>ZIP-Code: ${zip}</b><br>
-                                           🏡 Population: ${data.population}<br>
-                                           💰 Median Income: $${data.median_income}<br>
-                                           🏠 Housing Units: ${data.housing_units}
-                                       `).openPopup();
-                                   })
-                                   .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
-                           });
-
-                       zipCodeLayer.addLayer(polygon);
-                       zipCodeMarkers.addLayer(marker);
-                   });
-
-                   console.log("✅ ZIP-Code-Grenzen erfolgreich geladen!");
-               })
-               .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
-       }
-
-       // 📌 ZIP-Code-Layer zum Dropdown-Menü hinzufügen
        document.addEventListener("DOMContentLoaded", function() {
-           const zipCheckbox = document.createElement("label");
-           zipCheckbox.innerHTML = `<input type="checkbox" id="chk-zipcodes"> 📍 ZIP-Code Grenzen & Markierungen`;
-           
-           document.getElementById("dropdown-content").appendChild(zipCheckbox);
-
            document.getElementById("chk-zipcodes").addEventListener("change", function() {
                if (this.checked) {
-                   loadZipCodes();
-                   map.addLayer(zipCodeLayer);
-                   map.addLayer(zipCodeMarkers);
+                   loadZipCodes(); // ZIP-Code-Grenzen & Markierungen laden
                } else {
-                   map.removeLayer(zipCodeLayer);
-                   map.removeLayer(zipCodeMarkers);
+                   zipLayer.clearLayers(); // ZIP-Code-Grenzen & Marker entfernen
                }
            });
        });
 
+       // ZIP-Code-Farben zwischenspeichern
+       let zipColors = {};
+
+       // 🔹 Generiert für jeden ZIP-Code eine **stabile, zufällige Farbe**
+       function getRandomColor(zip) {
+           if (!zipColors[zip]) {
+               zipColors[zip] = "#" + Math.floor(Math.random() * 16777215).toString(16);
+           }
+           return zipColors[zip];
+       }
+
+       // 🔥 ZIP-Codes (Grenzen & Marker) laden
+       function loadZipCodes() {
+           fetch('data/fort_lauderdale_zipcodes.geojson')
+               .then(response => response.json())
+               .then(geoData => {
+                   let zipBoundaries = L.geoJSON(geoData, {
+                       style: function (feature) {
+                           return {
+                               color: getRandomColor(feature.properties.ZCTA5CE10), // Zufällige Farbe für jeden ZIP-Code
+                               weight: 2,
+                               opacity: 0.6,
+                               fillOpacity: 0.4
+                           };
+                       }
+                   });
+
+                   zipLayer.addLayer(zipBoundaries);
+
+                   // 🔍 ZIP-Code-Markierungen hinzufügen
+                   fetch("https://pinks.onrender.com/get-zipcodes")
+                       .then(response => response.json())
+                       .then(zipData => {
+                           zipData.forEach(zip => {
+                               var icon = L.icon({
+                                   iconUrl: "icons/zip.png",
+                                   iconSize: [30, 30],
+                                   iconAnchor: [15, 30],
+                                   popupAnchor: [0, -30]
+                               });
+
+                               let marker = L.marker([zip.latitude, zip.longitude], { icon: icon })
+                                   .bindPopup(`
+                                       <b>ZIP-Code: ${zip.zipcode}</b><br>
+                                                              🏡 Population: ${zip.population}<br>
+                                                              🏠 Gesamt-Häuser: ${zip.homes}<br>
+                                                              ✅ Ideale Häuser: ${zip.ideal_homes}<br>
+                                                              📏 Fläche: ${zip.sq_miles} sq miles
+                                   `);
+
+                               zipLayer.addLayer(marker);
+                           });
+
+                           console.log("✅ ZIP-Codes & Markierungen erfolgreich geladen!");
+                       })
+                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
+               })
+               .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Grenzen:", error));
+       }
+
+
+
+
+ // Zeichenwerkzeug
+ 
+       var drawnItems = new L.FeatureGroup();
+       map.addLayer(drawnItems);
+ 
+       var drawControl = new L.Control.Draw({
+           edit: { featureGroup: drawnItems },
+           draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
+       });
+       map.addControl(drawControl);
 
 
  // Zeichenwerkzeug
