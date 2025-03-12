@@ -107,7 +107,15 @@
                  <label><input type="checkbox" id="chk-house-ja" onclick="toggleHouseFilter('ja')"> ✅ Interessierte Häuser</label>
                  <label><input type="checkbox" id="chk-house-vielleicht" onclick="toggleHouseFilter('vielleicht')"> ❔ Vielleicht interessiert</label>
                  <label><input type="checkbox" id="chk-house-nein" onclick="toggleHouseFilter('nein')"> ❌ Nicht interessiert</label>
-             
+                 
+                 <hr>
+                 
+                 <label>
+                     <input type="checkbox" id="chk-zipcodes"> 📍 ZIP-Codes anzeigen
+                 </label>
+
+
+                    
              </div>
          </div>
      </div>
@@ -255,10 +263,11 @@
        
        
        
-       // 🔥 ZIP-Code Farben stabil halten
-       let zipColors = {};
+       // 🔵 ZIP-Code Layer für Grenzen & Markierungen
+       let zipLayer = L.layerGroup();
+       let zipColors = {}; // Farben für stabile ZIP-Code-Anzeige
 
-       // Funktion für eine stabile, zufällige Farbe pro ZIP-Code
+       // ✅ Funktion für stabile, zufällige Farbe pro ZIP-Code
        function getRandomColor(zip) {
            if (!zipColors[zip]) {
                zipColors[zip] = "#" + Math.floor(Math.random() * 16777215).toString(16);
@@ -266,38 +275,19 @@
            return zipColors[zip];
        }
 
-       let zipLayer = L.layerGroup(); // Layer für ZIP-Code-Grenzen & Marker
-
-       document.addEventListener("DOMContentLoaded", function() {
-           document.getElementById("chk-zipcodes").addEventListener("change", function() {
-               if (this.checked) {
-                   loadZipCodes(); // ZIP-Code-Grenzen & Markierungen laden
-               } else {
-                   zipLayer.clearLayers(); // ZIP-Code-Grenzen & Marker entfernen
-               }
-           });
-       });
-
-       // ZIP-Code-Farben zwischenspeichern
-       let zipColors = {};
-
-       // 🔹 Generiert für jeden ZIP-Code eine **stabile, zufällige Farbe**
-       function getRandomColor(zip) {
-           if (!zipColors[zip]) {
-               zipColors[zip] = "#" + Math.floor(Math.random() * 16777215).toString(16);
-           }
-           return zipColors[zip];
-       }
-
-       // 🔥 ZIP-Codes (Grenzen & Marker) laden
+       
+       let zipDataLoaded = false; // Variable zur Kontrolle
+       // 📌 ZIP-Codes laden & anzeigen (Grenzen + Marker)
        function loadZipCodes() {
+           if (zipDataLoaded) return; // Falls schon geladen, nicht erneut abrufen
+           
            fetch('data/fort_lauderdale_zipcodes.geojson')
                .then(response => response.json())
                .then(geoData => {
                    let zipBoundaries = L.geoJSON(geoData, {
                        style: function (feature) {
                            return {
-                               color: getRandomColor(feature.properties.ZCTA5CE10), // Zufällige Farbe für jeden ZIP-Code
+                               color: getRandomColor(feature.properties.ZCTA5CE10),
                                weight: 2,
                                opacity: 0.6,
                                fillOpacity: 0.4
@@ -307,7 +297,7 @@
 
                    zipLayer.addLayer(zipBoundaries);
 
-                   // 🔍 ZIP-Code-Markierungen hinzufügen
+                   // 🔍 ZIP-Code Markierungen abrufen
                    fetch("https://pinks.onrender.com/get-zipcodes")
                        .then(response => response.json())
                        .then(zipData => {
@@ -322,10 +312,10 @@
                                let marker = L.marker([zip.latitude, zip.longitude], { icon: icon })
                                    .bindPopup(`
                                        <b>ZIP-Code: ${zip.zipcode}</b><br>
-                                                              🏡 Population: ${zip.population}<br>
-                                                              🏠 Gesamt-Häuser: ${zip.homes}<br>
-                                                              ✅ Ideale Häuser: ${zip.ideal_homes}<br>
-                                                              📏 Fläche: ${zip.sq_miles} sq miles
+                                       🏡 Population: ${zip.population}<br>
+                                       🏠 Gesamt-Häuser: ${zip.homes}<br>
+                                       ✅ Ideale Häuser: ${zip.ideal_homes}<br>
+                                       📏 Fläche: ${zip.sq_miles} sq miles
                                    `);
 
                                zipLayer.addLayer(marker);
@@ -333,24 +323,25 @@
 
                            console.log("✅ ZIP-Codes & Markierungen erfolgreich geladen!");
                        })
-                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten:", error));
+                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten aus der Datenbank:", error));
+
                })
                .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Grenzen:", error));
        }
 
-
-
-
- // Zeichenwerkzeug
- 
-       var drawnItems = new L.FeatureGroup();
-       map.addLayer(drawnItems);
- 
-       var drawControl = new L.Control.Draw({
-           edit: { featureGroup: drawnItems },
-           draw: { polygon: true, polyline: true, marker: true, rectangle: true, circle: false }
+       // 📌 ZIP-Code-Grenzen & Marker AN/AUS schalten
+       document.addEventListener("DOMContentLoaded", function () {
+           document.getElementById("chk-zipcodes").addEventListener("change", function () {
+               if (this.checked) {
+                   loadZipCodes(); // ZIP-Codes anzeigen
+                   map.addLayer(zipLayer);
+               } else {
+                   zipLayer.clearLayers(); // Alle ZIP-Code-Grenzen & Markierungen löschen
+                    map.removeLayer(zipLayer);
+               }
+           });
        });
-       map.addControl(drawControl);
+
 
 
  // Zeichenwerkzeug
