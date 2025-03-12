@@ -265,8 +265,7 @@
        
        // 🔵 ZIP-Code Layer für Grenzen & Markierungen
        let zipLayer = L.layerGroup();
-       let zipColors = {}; // Speichert Farben für jeden ZIP-Code
-       let zipDataLoaded = false; // Kontrollvariable
+       let zipColors = {}; // Farben für stabile ZIP-Code-Anzeige
 
        // ✅ Funktion für stabile, zufällige Farbe pro ZIP-Code
        function getRandomColor(zip) {
@@ -276,7 +275,7 @@
            return zipColors[zip];
        }
 
-       // ✅ Berechne Mittelpunkt (Centroid) eines ZIP-Codes
+       // 🏠 ZIP-Code Markierungen & Grenzen laden
        function getCentroid(coords) {
            let sumX = 0, sumY = 0, count = 0;
            coords[0].forEach(point => {
@@ -287,19 +286,19 @@
            return [sumY / count, sumX / count]; // Reihenfolge [Lat, Lng]
        }
 
-       // ✅ Lade ZIP-Code-Grenzen & Marker
+       let zipDataLoaded = false; // Variable zur Kontrolle
+
        function loadZipCodes() {
            if (zipDataLoaded) return; // Falls schon geladen, nicht erneut abrufen
-           zipDataLoaded = true; // Setze auf true, damit es nur einmal geladen wird
 
            fetch('data/fort_lauderdale_zipcodes.geojson')
                .then(response => response.json())
                .then(geoData => {
                    let zipBoundaries = L.geoJSON(geoData, {
                        style: function (feature) {
-                           let zipCode = feature.properties.ZCTA5CE10; // ZIP-Code aus GeoJSON
+                           let zipCode = feature.properties["ZIP Code"];
                            return {
-                               color: getRandomColor(zipCode), // 🎨 Jedem ZIP-Code eine eigene Farbe geben
+                               color: getRandomColor(zipCode),
                                weight: 2,
                                opacity: 0.6,
                                fillOpacity: 0.4
@@ -309,16 +308,17 @@
 
                    zipLayer.addLayer(zipBoundaries);
 
-                   // 🔍 Hole ZIP-Code-Daten aus der Datenbank
+                   // 🔍 Berechne Mittelpunkte für Markierungen
                    fetch("https://pinks.onrender.com/get-zipcodes")
                        .then(response => response.json())
                        .then(zipData => {
                            geoData.features.forEach(feature => {
-                               let zipCode = feature.properties.ZCTA5CE10;
+                               let zipCode = feature.properties["ZIP Code"];
                                let centroid = getCentroid(feature.geometry.coordinates);
 
                                // Finde die passenden Daten aus der DB
                                let zipInfo = zipData.find(zip => zip.zip == zipCode);
+
                                if (!zipInfo) {
                                    console.warn(`⚠️ Keine DB-Daten für ZIP-Code ${zipCode}`);
                                    return;
@@ -343,9 +343,10 @@
                                zipLayer.addLayer(marker);
                            });
 
-                           console.log("✅ ZIP-Codes & Markierungen erfolgreich geladen!");
+                           console.log("✅ ZIP-Code-Grenzen & Markierungen erfolgreich geladen!");
+                           zipDataLoaded = true; // Daten wurden erfolgreich geladen
                        })
-                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten aus der DB:", error));
+                       .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Daten aus der Datenbank:", error));
                })
                .catch(error => console.error("❌ Fehler beim Laden der ZIP-Code-Grenzen:", error));
        }
